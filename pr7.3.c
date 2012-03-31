@@ -23,6 +23,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include "pr7.h"
+#include "pr7_table.h"
 
 #define MAXLINE 128
 #define MAXARGS 128
@@ -121,7 +122,7 @@ int main(int argc, char *argv[]) {
    // Startup file
    FILE *startup = fopen(startup_file, "r");
    if (startup != NULL) {
-      while(fgets(cmdline, MAXLINE, startup) != NULL) {
+      while (fgets(cmdline, MAXLINE, startup) != NULL) {
          ret = eval_line(cmdline);
       }
 
@@ -132,7 +133,7 @@ int main(int argc, char *argv[]) {
 
       if (fclose(startup) != 0) {
          fprintf(stderr, "%s: cannot close file %s: %s\n", prog, startup_file,
-                strerror(errno));
+                 strerror(errno));
       }
       startup = NULL;
    } else if (custom_startup) {
@@ -143,7 +144,7 @@ int main(int argc, char *argv[]) {
    // Input file
    FILE *infile;    
    char *infile_name;
-   if ( argv[optind] == NULL ) {
+   if (argv[optind] == NULL) {
       infile = stdin; infile_name = "[stdin]";
    } else {
       infile_name = argv[optind];  
