@@ -25,6 +25,7 @@
 char *prog;
 int  self_pid;
 int  verbose;
+int echo;
 
 extern char **environ;
 

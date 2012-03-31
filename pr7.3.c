@@ -5,8 +5,6 @@
  */
 
 #include "pr7.h"
-#include "pr7_table.h"
-
 
 int main(int argc, char *argv[]) {
    int ret = EXIT_SUCCESS;
@@ -23,8 +21,8 @@ int main(int argc, char *argv[]) {
    extern int opterr;
 
    verbose = 0;
-   int interactive = 0;
-   int echo = 0;
+   echo = 0;
+   int interactive = 1;
    int custom_startup = 0;
    char *startup_file = STARTUP_FILE;
 
@@ -104,7 +102,16 @@ int main(int argc, char *argv[]) {
    while(1) {
       // issue prompt and read command line
       if(interactive) {
-         printf("%s%% ", prog);
+         // Show a prompt in the format of [user]@[hostname]$
+         // If user or hostname cannot be determined, fallback to the process name
+         // as the prompt
+         char *user;
+         char host[_MAX_INPUT];
+         if((user = getenv("USER")) != NULL && gethostname(host, _MAX_INPUT) == 0) {
+            printf("%s@%s$ ", user, host);
+         } else {
+            printf("%s$ ", prog);
+         }
       }
 
       // cmdline includes trailing newline
