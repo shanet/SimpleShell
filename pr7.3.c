@@ -22,15 +22,40 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
+#include "pr7.h"
 
 #define MAXLINE 128
 #define MAXARGS 128
 
+#define STARTUP_FILE "pr7.init"
+
+// Function Prototypes
+int execvpe(const char *file, char *const argv[], char *const envp[]);
+void usage(int status);	                        /* print usage information */
 int eval_line(char *cmdline);                   /* evaluate a command line */
 int parse(char *buf, char *argv[]);             /* build the argv array */
 int builtin(char *argv[]);                      /* if builtin command, run it */
 
 extern char **environ;
+
+/*----------------------------------------------------------------------------*/
+
+void usage(int status) {
+   if (status == EXIT_SUCCESS) {
+      printf("Usage: %s [-h] [-v] [-i] [-e] [-s f] [file]\n", prog);
+      printf("    -h      help\n");
+      printf("    -i      interactive mode\n");
+      printf("    -e      echo commands before execution\n");
+      printf("    -s f    use startup file f, default pr7.init\n");
+
+      printf("Shell commands:\n");
+      printf("  exit help\n");
+   } else {
+      fprintf(stderr, "%s: Try '%s -h' for usage information.\n", prog, prog);
+   }
+
+   exit(status);
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -40,16 +65,120 @@ int main(int argc, char *argv[]) {
    int ret = EXIT_SUCCESS;
    char cmdline[MAXLINE];                /* command line */
 
+   prog = argv[0];
+   self_pid = (int) getpid();
+
+   // for use with getopt(3)
+   int ch;
+   extern char *optarg;
+   extern int optind;
+   extern int optopt;
+   extern int opterr;
+
+   // command line arguments
+   verbose = 0;
+   int interactive = 0;
+   int echo = 0;
+   int custom_startup = 0;
+   char *startup_file = STARTUP_FILE;
+
+   while((ch = getopt(argc, argv, ":hvies:")) != -1) {
+      switch(ch) {
+         case 'h':
+            usage(EXIT_SUCCESS);
+            break;
+         case 'v':
+            verbose = 1;
+            break;
+         case 'i':
+            interactive = 1;
+            break;
+         case 'e':
+            echo = 1;
+            break;
+         case 's':
+            custom_startup = 1;
+            startup_file = optarg;
+            break;
+         case '?':
+            fprintf(stderr, "%s: invalid option '%c'\n", prog, optopt);
+            usage(EXIT_FAILURE);
+            break;
+         case ':':
+            fprintf(stderr, "%s: option '%c' missing argument\n", prog, optopt);
+            usage(EXIT_FAILURE);
+            break;
+         default:
+            usage(EXIT_FAILURE);
+            break;
+      }
+   }
+
+   if (verbose) {
+      printf("%s %d: hello, world\n", prog, self_pid);
+   }
+
+   // Startup file
+   FILE *startup = fopen(startup_file, "r");
+   if (startup != NULL) {
+      while(fgets(cmdline, MAXLINE, startup) != NULL) {
+         ret = eval_line(cmdline);
+      }
+
+      if (ferror(startup) && custom_startup) {
+         fprintf(stderr, "%s: error reading file %s: %s\n", prog, startup_file,
+                 strerror(errno));
+      }
+
+      if (fclose(startup) != 0) {
+         fprintf(stderr, "%s: cannot close file %s: %s\n", prog, startup_file,
+                strerror(errno));
+      }
+      startup = NULL;
+   } else if (custom_startup) {
+      fprintf(stderr, "%s: cannot open startup file %s: %s\n", prog,
+              startup_file, strerror(errno));
+   }
+
+   // Input file
+   FILE *infile;    
+   char *infile_name;
+   if ( argv[optind] == NULL ) {
+      infile = stdin; infile_name = "[stdin]";
+   } else {
+      infile_name = argv[optind];  
+      infile = fopen(infile_name, "r");  /* read-only */
+      if (infile == NULL) {
+         fprintf(stderr, "%s: cannot open file %s: %s\n", prog, infile_name,
+                 strerror(errno));
+         exit(EXIT_FAILURE);
+      }
+   }
+
    while (1) {
       /* issue prompt and read command line */
-      printf("%s%% ", argv[0]);
-      fgets(cmdline, MAXLINE, stdin);   /* cmdline includes trailing newline */
-      if (feof(stdin)) {                /* end of file */
+      if (interactive) {
+         printf("%s%% ", prog);
+      }
+
+      fgets(cmdline, MAXLINE, infile);   /* cmdline includes trailing newline */
+      if (ferror(infile)) {
+         fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
+                 strerror(errno));
+         break;
+      }
+      if (feof(infile)) {                /* end of file */
          break;
       }
 
       ret = eval_line(cmdline);
    }
+
+   if (fclose(infile) != 0) {
+      fprintf(stderr, "%s: cannot close file %s: %s\n", prog, startup_file,
+             strerror(errno));
+   }
+   infile = NULL;
 
    return ret;
 }
@@ -80,7 +209,7 @@ int eval_line(char *cmdline) {
    }
 
    if ((pid = fork()) == 0) {    /* child runs user job */
-      if (execve(argv[0], argv, environ) == -1) {
+      if (execvpe(argv[0], argv, environ) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
          _exit(EXIT_FAILURE);
       }
@@ -147,6 +276,9 @@ int parse(char *buf, char *argv[]) {
 
 int builtin(char *argv[]) {
    if (strcmp(argv[0], "exit") == 0) {  /* exit command */
+      if (verbose) {
+         printf("%s %d: goodbye, world\n", prog, self_pid);
+      }
       exit(0);
    }
 

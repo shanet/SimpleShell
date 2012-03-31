@@ -12,6 +12,10 @@
 
 #include <limits.h>
 
+char *prog;
+int  self_pid;
+int  verbose;
+
 /*
  *  MAX_LINE            input line length
  *  MAX_PATH            directory name length
