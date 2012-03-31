@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
+#include "pr7_table.h"
 
 #define _MAX_INPUT 255
 #define MAX_ARGS 128
@@ -25,8 +26,7 @@
 char *prog;
 int  self_pid;
 int  verbose;
-
-extern char **environ;
+process_table_t *ptable;
 
 /*
  *  MAX_LINE            input line length

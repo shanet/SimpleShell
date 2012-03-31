@@ -5,7 +5,6 @@
  */
 
 #include "pr7.h"
-//#include "pr7_table.h"
 
 
 int main(int argc, char *argv[]) {
@@ -59,6 +58,9 @@ int main(int argc, char *argv[]) {
             break;
       }
    }
+
+   // Set up the process table
+   ptable = allocate_process_table();
 
    if(verbose) {
       printf("%s %d: hello, world\n", prog, self_pid);
@@ -128,6 +130,8 @@ int main(int argc, char *argv[]) {
    }
    infile = NULL;
 
+   deallocate_process_table(ptable);
+
    return ret;
 }
 
@@ -160,7 +164,7 @@ int eval_line(char *cmdline) {
 
    // Child runs user job
    if((pid = fork()) == 0) {
-      if(execvpe(argv[0], argv, environ) == -1) {
+      if(execvp(argv[0], argv) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
          _exit(EXIT_FAILURE);
       }
@@ -169,6 +173,7 @@ int eval_line(char *cmdline) {
    // Parent waits for foreground job to terminate
    if(background) {
       printf("background process %d: %s", (int) pid, cmdline);
+      //TODO
    } else {
       if(waitpid(pid, &ret, 0) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
