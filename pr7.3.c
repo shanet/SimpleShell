@@ -5,7 +5,7 @@
  */
 
 #include "pr7.h"
-//#include "pr7_table.h"
+#include "pr7_table.h"
 
 
 int main(int argc, char *argv[]) {

@@ -48,7 +48,6 @@ extern char **environ;
 
 #endif
 
-int execvpe(const char *file, char *const argv[], char *const envp[]);
 void usage(int status);                         /* print usage information */
 int eval_line(char *cmdline);                   /* evaluate a command line */
 int parse(char *buf, char *argv[]);             /* build the argv array */

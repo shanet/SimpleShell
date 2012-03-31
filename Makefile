@@ -4,7 +4,7 @@
 # Emails:               spt5063@psu.edu and gra5028@psu.edu
 #
 
-SRC=pr7.3.c #pr7_table.[ch]
+SRC=pr7.3.c pr7_table.c
 
 BINARY=pr7
 CFLAGS=-std=c99 -Wall -Wextra
