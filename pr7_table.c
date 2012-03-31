@@ -128,7 +128,7 @@ int remove_old_process(process_table_t *pt, pid_t pid) {
       return -1;
    }
 
-   child_process_t *prev;
+   child_process_t *prev = NULL;
    child_process_t *target = pt->ptab;
    while (target != NULL && target->pid != pid) {
       prev = target;
