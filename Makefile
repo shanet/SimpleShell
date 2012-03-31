@@ -4,10 +4,17 @@
 # Emails:		spt5063@psu.edu and gra5028@psu.edu
 #
 
-SRC = pr7.3.c pr7.h pr7_table.[ch]
+SRC=pr7.3.c pr7.h #pr7_table.[ch]
 
-pr7-gcc: ${SRC}
-	gcc -Wall -Wextra -o pr7 ${SRC}
+BINARY=pr7
+CFLAGS=-std=c99 -Wall -Wextra
+
+
+all:
+	gcc $(CFLAGS) -O2 -o $(BINARY) $(SRC)
+
+debug:
+	gcc $(CFLAGS) -g -O0 -o $(BINARY) $(SRC)
 
 clean:
-	rm pr7
+	rm $(BINARY)

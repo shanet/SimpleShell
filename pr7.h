@@ -10,11 +10,25 @@
 
 /*----------------------------------------------------------------------------*/
 
+#define _GNU_SOURCE
+
 #include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/wait.h>
+
+#define MAX_INPUT 255
+#define MAX_ARGS 128
+#define STARTUP_FILE "pr7.init"
 
 char *prog;
 int  self_pid;
 int  verbose;
+
+extern char **environ;
 
 /*
  *  MAX_LINE            input line length
@@ -44,7 +58,10 @@ int  verbose;
 
 #endif
 
-/*----------------------------------------------------------------------------*/
-
 #endif
 
+int execvpe(const char *file, char *const argv[], char *const envp[]);
+void usage(int status);                         /* print usage information */
+int eval_line(char *cmdline);                   /* evaluate a command line */
+int parse(char *buf, char *argv[]);             /* build the argv array */
+int builtin(char *argv[]);                      /* if builtin command, run it */
