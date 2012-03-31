@@ -10,7 +10,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define _GNU_SOURCE
+#if _POSIX_C_SOURCE >= 2 || _XOPEN_SOURCE || _POSIX_SOURCE
 
 #include <limits.h>
 #include <stdio.h>
