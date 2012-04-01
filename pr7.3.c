@@ -1,7 +1,7 @@
 /* CMPSC 311 Project 7, version 3
  *
  * Authors:    Shane Tully and Gage Ames
- * Emails:     spt5063@psu.edu and gra5028@psu.edu
+ * Emails:     shanet@psu.edu and gra5028@psu.edu
  */
 
 #include "pr7.h"
@@ -61,6 +61,9 @@ int main(int argc, char *argv[]) {
    // Set up the process table
    ptable = allocate_process_table();
 
+   // Prevent Ctrl+C from terminating the shell
+   install_signal_handler(SIGINT, SIGINT_handler);
+
    if(verbose) {
       printf("%s %d: hello, world\n", prog, self_pid);
    }
@@ -109,21 +112,7 @@ int main(int argc, char *argv[]) {
    while(1) {
       // If interctive mode, show a prompt
       if(interactive) {
-         if(!isLineCont) {
-            // Show a prompt in the format of [user]@[hostname]$
-            // If user or hostname cannot be determined, fallback to the process name
-            // as the prompt
-            char user[_MAX_INPUT];
-            char host[_MAX_INPUT];
-            if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0) {
-               printf("%s@%s$ ", user, host);
-            } else {
-               printf("%s$ ", prog);
-            }
-         // If line continuation, just show an arrow for the prompt
-         } else {
-            printf("> ");
-         }
+         print_prompt(isLineCont);
       }
 
       // Read command from input
@@ -186,11 +175,7 @@ int main(int argc, char *argv[]) {
 
 /*----------------------------------------------------------------------------*/
 
-/* evaluate a command line
- *
- * Compare to eval() in CS:APP Fig. 8.23.
- */
-
+// Evaluate a command line
 int eval_line(char *cmdline) {
    char *argv[MAX_ARGS];                 /* argv for execve() */
    char buf[MAX_LINE];                   /* holds modified command line */
@@ -218,6 +203,10 @@ int eval_line(char *cmdline) {
 
    // Create child to exexute command
    if((pid = fork()) == 0) {
+      // Ignore SIGINT in the child -- our shell manages interrupts to children
+      ignore_signal_handler(SIGINT);
+
+      // Try to replace the child with the desired program 
       if(execvp(argv[0], argv) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
          _exit(EXIT_FAILURE);
@@ -229,10 +218,12 @@ int eval_line(char *cmdline) {
       printf("background process %d: %s", (int) pid, cmdline);
       insert_new_process(ptable, pid, argv[0]);
    } else {
+      foreground_pid = pid;
       if(waitpid(pid, &status, 0) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
          exit(EXIT_FAILURE);
       }
+      foreground_pid = 0;
 
       if (verbose) {
           print_wait_status(pid, status);
@@ -327,7 +318,7 @@ int builtin(char *argv[]) {
    } else if(strcmp(argv[0], "cdir") == 0) {
       char *path;
       // If a path wasn't given, default to the HOME env
-      if(argv[1] == NULL) {
+      if(argv[1] != NULL) {
          path = argv[1];
       } else if((path = getenv("HOME")) == NULL) {
          fprintf(stderr, "%s: Failed to change directory\n", prog);
@@ -409,6 +400,84 @@ int builtin(char *argv[]) {
 
    // Not a builtin command
    return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void print_prompt(int isLineCont) {
+   if(!isLineCont) {
+      // Show a prompt in the format of [user]@[hostname]$
+      // If user or hostname cannot be determined, fallback to the process name
+      // as the prompt
+      char user[_MAX_INPUT];
+      char host[_MAX_INPUT];
+      if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0) {
+         printf("%s@%s$ ", user, host);
+      } else {
+         printf("%s$ ", prog);
+      }
+   // If line continuation, just show an arrow for the prompt
+   } else {
+      printf("> ");
+   }
+
+   // Flush stdout to ensure the prompt gets written
+   // (It doesn't end with a new line, so line buffering can delay its display)
+   fflush(stdout);
+}
+
+/*----------------------------------------------------------------------------*/
+
+// Interrupt signal handler for the shell and foreground process
+void SIGINT_handler(int sig) {
+   if (foreground_pid == 0) {
+      fprintf(stderr, "SIGINT ignored\n");
+      print_prompt();
+   } else {
+      kill(foreground_pid, SIGINT);
+      foreground_pid = 0;
+   }
+}
+
+// Install signal handler using sigaction
+// return 0 if successful, -1 if not
+int install_signal_handler(int sig, sighandler_t func) {
+   struct sigaction sigact;		// signal handler descriptor
+   int ret;				            // error indicator
+
+   sigact.sa_handler = func;     // name of the signal handler function
+   sigemptyset(&sigact.sa_mask); // do not mask any interrupts while in handler
+   sigact.sa_flags = SA_RESTART; // restart system functions if interrupted
+
+   ret = sigaction(sig, &sigact, NULL);	// do the installation
+
+   if (ret == -1) {              // error condition
+      fprintf(stderr, "install_signal_handler(%d) failed: %s\n", sig,
+              strerror(errno));
+   }
+
+   return ((ret == -1) ? -1 : 0);
+}
+
+// Ignore a signal handler using sigaction
+// Used for background processes
+// return 0 if successful, -1 if not */
+int ignore_signal_handler(int sig) {
+   struct sigaction sigact;      // signal handler descriptor
+   int ret;                      // error indicator
+
+   sigact.sa_handler = SIG_IGN;  // ignore the signal
+   sigemptyset(&sigact.sa_mask); // do not mask any interrupts while in handler
+   sigact.sa_flags = SA_RESTART; // restart system functions if interrupted
+
+   ret = sigaction(sig, &sigact, NULL);   // do the installation
+
+   if (ret == -1) {              // error condition
+      fprintf(stderr, "ignore_signal_handler(%d) failed: %s\n", sig,
+              strerror(errno));
+   }
+
+   return ((ret == -1) ? -1 : 0);
 }
 
 /*----------------------------------------------------------------------------*/
