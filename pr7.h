@@ -52,5 +52,8 @@ void usage(int status);                         /* print usage information */
 int eval_line(char *cmdline);                   /* evaluate a command line */
 int parse(char *buf, char *argv[]);             /* build the argv array */
 int builtin(char *argv[]);                      /* if builtin command, run it */
+void Exit(int status);
+void print_wait_status(pid_t pid, int status);
+void cleanup_terminated_children();
 
 #endif
