@@ -21,7 +21,7 @@
 #define STATE_NONE       0
 #define STATE_RUNNING    1
 #define STATE_TERMINATED 2
-static char *state[] = { "none", "running", "terminated" };
+extern char *state[];
 
 typedef struct child_process {
    pid_t pid;            /* process ID, supplied from fork() */

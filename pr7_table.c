@@ -7,6 +7,7 @@
  */
 
 #include "pr7_table.h"
+char *state[] = { "none", "running", "terminated" };
 
 // typedef struct child_process {
 //    pid_t pid;            /* process ID, supplied from fork() */

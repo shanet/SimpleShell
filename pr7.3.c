@@ -119,13 +119,15 @@ int main(int argc, char *argv[]) {
 
       // Read command from input
       // cmdline includes trailing newline
-      if(fgets(cmdline, MAX_LINE, infile) == EOF) {
-         break;
-      }
+      fgets(cmdline, MAX_LINE, infile);
 
       if(ferror(infile)) {
          fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
                  strerror(errno));
+         break;
+      }
+
+      if (feof(infile)) {
          break;
       }
 
@@ -438,7 +440,7 @@ void print_prompt(int isLineCont) {
       // as the prompt
       char user[_MAX_INPUT];
       char host[_MAX_INPUT];
-      char *cwd;
+      char *cwd = NULL;
 
       if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0 && (cwd = getcwd(NULL, PATH_MAX)) != NULL) {
          printf("%s@%s:%s$ ", user, host, cwd);
@@ -462,6 +464,11 @@ void print_prompt(int isLineCont) {
 
 // Interrupt signal handler for the shell and foreground process
 void SIGINT_handler(int sig) {
+   if (sig != SIGINT) {
+      fprintf(stderr, "%s: SIGINT_handler() recieved incorrect signal.", prog);
+      return;
+   }
+
    if (foreground_pid == 0) {
       fprintf(stderr, "SIGINT ignored\n");
       print_prompt(0);
