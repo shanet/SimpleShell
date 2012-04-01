@@ -141,8 +141,11 @@ int main(int argc, char *argv[]) {
          isLineCont = 1;
          continue;
       } else if(isLineCont) {
+         // This is end line of a line continuation so append it to the command buffer,
+         // and then allow it to be eval'd below
          strncat(command, cmdline, strlen(cmdline));
       } else {
+         // Normal line. Overwrite the commnd buffer.
          strncpy(command, cmdline, strlen(cmdline));
       }
 
