@@ -119,15 +119,7 @@ int main(int argc, char *argv[]) {
 
       // Read command from input
       // cmdline includes trailing newline
-      fgets(cmdline, MAX_LINE, infile);
-
-      if(ferror(infile)) {
-         fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
-                 strerror(errno));
-         break;
-      }
-
-      if (feof(infile)) {
+      if (fgets(cmdline, MAX_LINE, infile) == NULL) {
          break;
       }
 
@@ -164,6 +156,11 @@ int main(int argc, char *argv[]) {
       // Reset command buffer and line continuation flag for the next line of input
       isLineCont = 0;
       memset(command, '\0', strlen(command));
+   }
+
+   if(ferror(infile)) {
+      fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
+              strerror(errno));
    }
 
    if(fclose(infile) != 0) {
