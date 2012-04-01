@@ -300,7 +300,9 @@ int builtin(char *argv[]) {
       } else {
          Exit(0);
       }
-      return 0;      // Exit() will return if there are background jobs
+
+      // Exit() will return if there are background jobs
+      return 0;
 
    // echo command
    } else if(strcmp(argv[0], "echo") == 0) {
@@ -441,9 +443,12 @@ void print_prompt(int isLineCont) {
       char user[_MAX_INPUT];
       char host[_MAX_INPUT];
       char *cwd = NULL;
+      char *dir;
 
       if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0 && (cwd = getcwd(NULL, PATH_MAX)) != NULL) {
-         printf("%s@%s:%s$ ", user, host, cwd);
+         // Move cwd to the deepest directory
+         dir = strrchr(cwd, '/')+1;
+         printf("%s@%s:%s$ ", user, host, dir);
       } else {
          printf("%s$ ", prog);
       }
