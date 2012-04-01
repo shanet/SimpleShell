@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 
    verbose = 0;
    echo = 0;
-   int interactive = 1;
+   int interactive = 0;
    int custom_startup = 0;
    char *startup_file = STARTUP_FILE;
 
@@ -192,11 +192,15 @@ int eval_line(char *cmdline) {
    // Parent waits for foreground job to terminate
    if(background) {
       printf("background process %d: %s", (int) pid, cmdline);
-      insert_new_process(ptable, pid);
+      insert_new_process(ptable, pid, argv[0]);
    } else {
       if(waitpid(pid, &status, 0) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
          exit(EXIT_FAILURE);
+      }
+
+      if (verbose) {
+          print_wait_status(pid, status);
       }
    }
 
@@ -247,7 +251,7 @@ int builtin(char *argv[]) {
    // exit/quit command
    if(strcmp(argv[0], "exit") == 0 || strcmp(argv[0], "quit") == 0) {
       if(verbose) {
-         printf("%s %d: goodbye, world\n", prog, self_pid);
+         printf("%s (%d): goodbye, world\n", prog, self_pid);
       }
       Exit(0);
    // echo command
@@ -328,6 +332,11 @@ int builtin(char *argv[]) {
          fprintf(stderr, "%s: No argument specified\n", prog);
       }
       return 0;
+   // pjobs commands
+   } else if (strcmp(argv[0], "pjobs") == 0) {
+      // Print the process table of running jobs
+      print_process_table(ptable);
+      return 0;
    // help command
    } else if(strcmp(argv[0], "help") == 0) {
       printf("%s: Built-in commands:\n", prog);
@@ -337,12 +346,13 @@ int builtin(char *argv[]) {
       printf("\tpenv [env]\t\tPrint specified enviroment variable or none for all variables\n");
       printf("\tsenv [env] [value]\tSet the specified enviroment variable to the specified value\n");
       printf("\tunsenv [env]\t\tUnset the specified enviroment variable\n");
+      printf("\tpjobs\t\t\tPrint table of all running jobs\n");
       printf("\thelp\t\t\tPrint this message\n");
       printf("\texit\t\t\tExit the shell\n");
       printf("\tquit\t\t\tSame as \'exit\'\n");
       return 0;
-   // Ignore singleton &
-   } else if(strcmp(argv[0], "&") == 0) {
+   // Ignore singleton '&'
+   } else if (strcmp(argv[0], "&") == 0) {
       return 0;
    }
 
@@ -356,9 +366,12 @@ int builtin(char *argv[]) {
 // exiting
 void Exit(int status) {
    if (ptable->children != 0) {
-      printf("There %s %d background job%s running\n",
+      printf("There %s %d background job%s running.\n",
              ((ptable->children > 1) ? "are" : "is"), ptable->children,
              ((ptable->children > 1) ? "s" : "" ));
+      if (verbose) {
+         print_process_table(ptable);
+      }
    } else {
       deallocate_process_table(ptable);
       exit(status);
@@ -369,7 +382,7 @@ void Exit(int status) {
 
 void print_wait_status(pid_t pid, int status) {
    printf("process %d, completed %snormally, status %d\n", pid,
-          ((status == 0) ? "" : "ab"), status);
+          ((status >= 0) ? "" : "ab"), status);
 }
 
 /*----------------------------------------------------------------------------*/

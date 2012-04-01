@@ -12,7 +12,8 @@
 //    pid_t pid;            /* process ID, supplied from fork() */
 //    int   state;          /* process state, your own definition */
 //    int   exit_status;    /* supplied from wait() if process has finished */
-
+//    char *program;        /* program name*/
+//
 //    struct child_process *next;
 // } child_process_t;
 
@@ -57,6 +58,7 @@ void deallocate_process_table(process_table_t *pt) {
    for (cur = pt->ptab; cur != NULL; cur = cur->next)
    {
       free(prev);
+      free(cur->program);
       prev = cur;
    }
 
@@ -73,18 +75,19 @@ int print_process_table(process_table_t *pt) {
    }
 
    printf("  process table\n");
-   printf("       pid         state        status\n");
+   printf("       pid         state        status    program\n");
 
    child_process_t *child;
    for (child = pt->ptab; child != NULL; child = child->next) {
-      printf("    %6d    %10s    0x%08x\n", child->pid, state[child->state],
-             child->exit_status);
+      printf("    %6d    %10s    0x%08x    %s\n", child->pid,
+             state[child->state], child->exit_status,
+             safe_string(child->program));
    }
 
    return 0;
 }
 
-int insert_new_process(process_table_t *pt, pid_t pid) {
+int insert_new_process(process_table_t *pt, pid_t pid, char *program) {
    if (pt == NULL) {
       return -1;
    }
@@ -94,6 +97,7 @@ int insert_new_process(process_table_t *pt, pid_t pid) {
    new->pid = pid;
    new->state = STATE_RUNNING;
    new->exit_status = 0;
+   new->program = Strdup(program);
    new->next = NULL;
 
    if (pt->ptab == NULL) {    // First entry in the list
@@ -149,10 +153,27 @@ int remove_old_process(process_table_t *pt, pid_t pid) {
 
    // Mark the item as terminated and free it
    target->state = STATE_TERMINATED;
+   free(target->program);
    free(target);
 
    pt->children--;
    return 0;
 }
 
-/*----------------------------------------------------------------------------*/ 
+/*----------------------------------------------------------------------------*/
+
+const char *safe_string(const char *str) {
+   if (str == NULL) {
+      return "(null)";
+   } else {
+      return str;
+   }
+}
+
+char *Strdup(const char *s) {
+   char *p = strdup(s);
+   if (p == NULL) {
+      fprintf(stderr, "strdup(): %s\n", strerror(errno));
+   }
+   return p;
+}
