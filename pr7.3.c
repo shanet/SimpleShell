@@ -219,6 +219,15 @@ int parse(char *buf, char *argv[]) {
 
    /* Note - the trailing '\n' in buf is whitespace, and we need it as a delimiter. */
 
+   // Treat anything following a '#' as a comment
+   char *cmtIndex = strchr(buf, '#');
+   if(cmtIndex != NULL) {
+      // Get a pointer to the end of the string
+      char *end = strchr(cmtIndex, '\0');
+      while(cmtIndex != end) end--;
+      *end = '\0';
+   }
+
    while(1) {                          /* build the argv list */
       buf += strspn(buf, whsp);        /* skip leading whitespace */
       delim = strpbrk(buf, whsp);      /* next whitespace char or NULL */
