@@ -170,6 +170,11 @@ int eval_line(char *cmdline) {
       return status;
    }
 
+   // If echo is on, print out the command
+   if(echo) {
+      printf("%s", cmdline);
+   }
+
    // Check for builtin commands (exit, echo, etc.)
    if(builtin(argv) == 0) {
       return status;
