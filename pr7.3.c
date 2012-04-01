@@ -435,7 +435,7 @@ void print_prompt(int isLineCont) {
 void SIGINT_handler(int sig) {
    if (foreground_pid == 0) {
       fprintf(stderr, "SIGINT ignored\n");
-      print_prompt();
+      print_prompt(0);
    } else {
       kill(foreground_pid, SIGINT);
       foreground_pid = 0;
