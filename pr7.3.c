@@ -110,9 +110,9 @@ int main(int argc, char *argv[]) {
          // Show a prompt in the format of [user]@[hostname]$
          // If user or hostname cannot be determined, fallback to the process name
          // as the prompt
-         char *user;
+         char user[_MAX_INPUT];
          char host[_MAX_INPUT];
-         if((user = getenv("USER")) != NULL && gethostname(host, _MAX_INPUT) == 0) {
+         if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0) {
             printf("%s@%s$ ", user, host);
          } else {
             printf("%s$ ", prog);
@@ -244,12 +244,13 @@ int parse(char *buf, char *argv[]) {
 
 // If first arg is a builtin command, run it and return true
 int builtin(char *argv[]) {
-   // Exit command
+   // exit/quit command
    if(strcmp(argv[0], "exit") == 0 || strcmp(argv[0], "quit") == 0) {
       if(verbose) {
          printf("%s %d: goodbye, world\n", prog, self_pid);
       }
       Exit(0);
+   // echo command
    } else if(strcmp(argv[0], "echo") == 0) {
       // Print (echo) each argument
       unsigned int i=1;
@@ -260,14 +261,92 @@ int builtin(char *argv[]) {
       // Print a trailing a newline
       printf("\n");
       return 0;
-   }
+   // dir command
+   } else if(strcmp(argv[0], "dir") == 0) {
+      char *dir = getcwd(NULL, _MAX_INPUT);
+      printf("%s\n", dir);
+      free(dir);
+      dir = NULL;
+      return 0;
+   // cdir command
+   } else if(strcmp(argv[0], "cdir") == 0) {
+      char *path;
+      // If a path wasn't given, default to the HOME env
+      if(argv[1] == NULL) {
+         path = argv[1];
+      } else if((path = getenv("HOME")) == NULL) {
+         fprintf(stderr, "%s: Failed to change directory\n", prog);
+      }
 
-   // ignore singleton &
-   if(strcmp(argv[0], "&") == 0) {
+      // Try to change the directory
+      if(chdir(path) != 0) {
+         fprintf(stderr, "%s: Failed to change directory to \"%s\"\n", prog, path);
+      }
+
+      // Update PWD env
+      char fullPath[PATH_MAX];
+      if(realpath(path, fullPath) == NULL || setenv("PWD", fullPath, 1) != 0) {
+         fprintf(stderr, "%s: Directory changed successfully, but failed to update \"PWD\" enviroment variable\n", prog);
+      }
+
+      return 0;
+   // penv command
+   } else if(strcmp(argv[0], "penv") == 0) {
+      char *env;
+      extern char **environ;
+      // If there aren't any arguments, print all envs
+      if(argv[1] == NULL) {
+         unsigned int i=0;
+         while(environ[i] != NULL) {
+            printf("%s\n", environ[i]);
+            i++;
+         }
+      // Print the specified env
+      } else {
+         if((env = getenv(argv[1])) != NULL) {
+            printf("%s=%s\n", argv[1], env);
+         }
+      }
+      return 0;
+   // senv command
+   } else if(strcmp(argv[0], "senv") == 0) {
+      if(argv[1] != NULL && argv[2] != NULL) {
+         if(setenv(argv[1], argv[2], 1) != 0) {
+            fprintf(stderr, "%s: Failed to set enviroment variable \"%s\" to \"%s\"\n", prog, argv[1], argv[2]);
+         }
+      } else {
+         fprintf(stderr, "%s: Missing argument(s)\n", prog);
+      }
+      return 0;
+   // unsenv command
+   } else if(strcmp(argv[0], "unsenv") == 0) {
+      if(argv[1] != NULL) {
+         if(unsetenv(argv[1]) != 0) {
+            fprintf(stderr, "%s: Failed to unset enviroment variable: \"%s\"\n", prog, argv[1]);
+         }
+      } else {
+         fprintf(stderr, "%s: No argument specified\n", prog);
+      }
+      return 0;
+   // help command
+   } else if(strcmp(argv[0], "help") == 0) {
+      printf("%s: Built-in commands:\n", prog);
+      printf("\techo [args]\t\tPrint any arguments given\n");
+      printf("\tdir\t\t\tPrint the current working directory\n");
+      printf("\tcdir [directory]\tChange the current working directory\n");
+      printf("\tpenv [env]\t\tPrint specified enviroment variable or none for all variables\n");
+      printf("\tsenv [env] [value]\tSet the specified enviroment variable to the specified value\n");
+      printf("\tunsenv [env]\t\tUnset the specified enviroment variable\n");
+      printf("\thelp\t\t\tPrint this message\n");
+      printf("\texit\t\t\tExit the shell\n");
+      printf("\tquit\t\t\tSame as \'exit\'\n");
+      return 0;
+   // Ignore singleton &
+   } else if(strcmp(argv[0], "&") == 0) {
       return 0;
    }
 
-   // not a builtin command
+   // Not a builtin command
    return 1;
 }
 
@@ -292,6 +371,8 @@ void print_wait_status(pid_t pid, int status) {
    printf("process %d, completed %snormally, status %d\n", pid,
           ((status == 0) ? "" : "ab"), status);
 }
+
+/*----------------------------------------------------------------------------*/
 
 //Find all the child processes that have terminated, without waiting.
 void cleanup_terminated_children(void) {
