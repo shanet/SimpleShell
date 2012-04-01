@@ -104,18 +104,25 @@ int main(int argc, char *argv[]) {
    }
 
    // Main input loop
+   char command[COMMAND_LEN];
+   int isLineCont = 0;
    while(1) {
       // If interctive mode, show a prompt
       if(interactive) {
-         // Show a prompt in the format of [user]@[hostname]$
-         // If user or hostname cannot be determined, fallback to the process name
-         // as the prompt
-         char user[_MAX_INPUT];
-         char host[_MAX_INPUT];
-         if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0) {
-            printf("%s@%s$ ", user, host);
+         if(!isLineCont) {
+            // Show a prompt in the format of [user]@[hostname]$
+            // If user or hostname cannot be determined, fallback to the process name
+            // as the prompt
+            char user[_MAX_INPUT];
+            char host[_MAX_INPUT];
+            if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0) {
+               printf("%s@%s$ ", user, host);
+            } else {
+               printf("%s$ ", prog);
+            }
+         // If line continuation, just show an arrow for the prompt
          } else {
-            printf("%s$ ", prog);
+            printf("> ");
          }
       }
 
@@ -129,13 +136,41 @@ int main(int argc, char *argv[]) {
          break;
       }
 
-      // end of file
+      // End of input
       if(feof(infile)) {
          break;
       }
 
+      // Check for line continuation
+      char *end = strchr(cmdline, '\0');
+      // Subtract the null-terminator and newline
+      end-=2;
+      if(*end == '\\') {
+         // Remove the \ char
+         *end = '\0';
+         strncat(command, cmdline, strlen(cmdline));
+         isLineCont = 1;
+         continue;
+      } else if(isLineCont) {
+         strncat(command, cmdline, strlen(cmdline));
+      } else {
+         strncpy(command, cmdline, strlen(cmdline));
+      }
+
       cleanup_terminated_children();
-      status = eval_line(cmdline);
+
+      // Check that the line about the parsed doesn't end with a line continuation char
+      if(*(strchr(cmdline, '\0')-2) == '\\') {
+         fprintf(stderr, "%s: Input with line continuation at end of input\n", prog);
+         break;
+      }
+
+      // Parse the line
+      status = eval_line(command);
+
+      // Reset command buffer and line continuation flag for the next line of input
+      isLineCont = 0;
+      memset(command, '\0', strlen(command));
    }
 
    if(fclose(infile) != 0) {
@@ -262,6 +297,13 @@ int builtin(char *argv[]) {
       if(verbose) {
          printf("%s (%d): goodbye, world\n", prog, self_pid);
       }
+
+      // Check if an exit code was supplied
+      int exitCode;
+      if(argv[1] != NULL && (exitCode = atoi(argv[1])) != 0) {
+         Exit(exitCode);
+      }
+
       Exit(0);
    // echo command
    } else if(strcmp(argv[0], "echo") == 0) {
@@ -357,8 +399,8 @@ int builtin(char *argv[]) {
       printf("\tunsenv [env]\t\tUnset the specified enviroment variable\n");
       printf("\tpjobs\t\t\tPrint table of all running jobs\n");
       printf("\thelp\t\t\tPrint this message\n");
-      printf("\texit\t\t\tExit the shell\n");
-      printf("\tquit\t\t\tSame as \'exit\'\n");
+      printf("\texit [n]\t\t\tExit the shell with specified exit code (0 if omitted)\n");
+      printf("\tquit [n]\t\t\tSame as \'exit\'\n");
       return 0;
    // Ignore singleton '&'
    } else if (strcmp(argv[0], "&") == 0) {

@@ -18,6 +18,7 @@
 #include "pr7_table.h"
 
 #define _MAX_INPUT 255
+#define COMMAND_LEN 4096
 #define MAX_ARGS 128
 #define STARTUP_FILE "pr7.init"
 
