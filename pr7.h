@@ -21,11 +21,12 @@
 #define MAX_ARGS 128
 #define STARTUP_FILE "pr7.init"
 
-char *prog;
-int  self_pid;
-int  verbose;
-int echo;
+char  *prog;
+int   self_pid;
+int   verbose;
+int   echo;
 process_table_t *ptable;
+static pid_t foreground_pid = 0;
 
 /*
  *  MAX_LINE            input line length
@@ -51,8 +52,12 @@ void usage(int status);                         /* print usage information */
 int eval_line(char *cmdline);                   /* evaluate a command line */
 int parse(char *buf, char *argv[]);             /* build the argv array */
 int builtin(char *argv[]);                      /* if builtin command, run it */
+void print_prompt(void);
 void Exit(int status);
 void print_wait_status(pid_t pid, int status);
-void cleanup_terminated_children();
+void cleanup_terminated_children(void);
+void SIGINT_handler(int sig);
+int install_signal_handler(int sig, sighandler_t func);
+int ignore_signal_handler(int sig);
 
 #endif

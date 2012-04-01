@@ -61,6 +61,9 @@ int main(int argc, char *argv[]) {
    // Set up the process table
    ptable = allocate_process_table();
 
+   // Prevent Ctrl+C from terminating the shell
+   install_signal_handler(SIGINT, SIGINT_handler);
+
    if(verbose) {
       printf("%s %d: hello, world\n", prog, self_pid);
    }
@@ -107,16 +110,7 @@ int main(int argc, char *argv[]) {
    while(1) {
       // If interctive mode, show a prompt
       if(interactive) {
-         // Show a prompt in the format of [user]@[hostname]$
-         // If user or hostname cannot be determined, fallback to the process name
-         // as the prompt
-         char *user;
-         char host[_MAX_INPUT];
-         if((user = getenv("USER")) != NULL && gethostname(host, _MAX_INPUT) == 0) {
-            printf("%s@%s$ ", user, host);
-         } else {
-            printf("%s$ ", prog);
-         }
+         print_prompt();
       }
 
       // Read command from input
@@ -183,6 +177,10 @@ int eval_line(char *cmdline) {
 
    // Create child to exexute command
    if((pid = fork()) == 0) {
+      // Ignore SIGINT in the child -- our shell manages interrupts to children
+      ignore_signal_handler(SIGINT);
+
+      // Try to replace the child with the desired program 
       if(execvp(argv[0], argv) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
          _exit(EXIT_FAILURE);
@@ -194,10 +192,12 @@ int eval_line(char *cmdline) {
       printf("background process %d: %s", (int) pid, cmdline);
       insert_new_process(ptable, pid, argv[0]);
    } else {
+      foreground_pid = pid;
       if(waitpid(pid, &status, 0) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
          exit(EXIT_FAILURE);
       }
+      foreground_pid = 0;
 
       if (verbose) {
           print_wait_status(pid, status);
@@ -275,6 +275,77 @@ int builtin(char *argv[]) {
 
    // not a builtin command
    return 1;
+}
+
+void print_prompt(void) {
+   // Show a prompt in the format of [user]@[hostname]$
+   // If user or hostname cannot be determined, fallback to the process name
+   // as the prompt
+   char *user;
+   char host[_MAX_INPUT];
+   if((user = getenv("USER")) != NULL && gethostname(host, _MAX_INPUT) == 0) {
+      printf("%s@%s$ ", user, host);
+   } else {
+      printf("%s$ ", prog);
+   }
+
+   // Flush stdout to ensure the prompt gets written
+   // (It doesn't end with a new line, so line buffering can delay its display)
+   fflush(stdout);
+}
+
+/*----------------------------------------------------------------------------*/
+
+// Interrupt signal handler for the shell and foreground process
+void SIGINT_handler(int sig) {
+   if (foreground_pid == 0) {
+      fprintf(stderr, "SIGINT ignored\n");
+      print_prompt();
+   } else {
+      kill(foreground_pid, SIGINT);
+      foreground_pid = 0;
+   }
+}
+
+// Install signal handler using sigaction
+// return 0 if successful, -1 if not
+int install_signal_handler(int sig, sighandler_t func) {
+   struct sigaction sigact;		// signal handler descriptor
+   int ret;				            // error indicator
+
+   sigact.sa_handler = func;     // name of the signal handler function
+   sigemptyset(&sigact.sa_mask); // do not mask any interrupts while in handler
+   sigact.sa_flags = SA_RESTART; // restart system functions if interrupted
+
+   ret = sigaction(sig, &sigact, NULL);	// do the installation
+
+   if (ret == -1) {              // error condition
+      fprintf(stderr, "install_signal_handler(%d) failed: %s\n", sig,
+              strerror(errno));
+   }
+
+   return ((ret == -1) ? -1 : 0);
+}
+
+// Ignore a signal handler using sigaction
+// Used for background processes
+// return 0 if successful, -1 if not */
+int ignore_signal_handler(int sig) {
+   struct sigaction sigact;      // signal handler descriptor
+   int ret;                      // error indicator
+
+   sigact.sa_handler = SIG_IGN;  // ignore the signal
+   sigemptyset(&sigact.sa_mask); // do not mask any interrupts while in handler
+   sigact.sa_flags = SA_RESTART; // restart system functions if interrupted
+
+   ret = sigaction(sig, &sigact, NULL);   // do the installation
+
+   if (ret == -1) {              // error condition
+      fprintf(stderr, "ignore_signal_handler(%d) failed: %s\n", sig,
+              strerror(errno));
+   }
+
+   return ((ret == -1) ? -1 : 0);
 }
 
 /*----------------------------------------------------------------------------*/
