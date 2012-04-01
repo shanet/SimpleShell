@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
       if(infile == NULL) {
          fprintf(stderr, "%s: cannot open file %s: %s\n", prog, infile_name,
                  strerror(errno));
-         exit(EXIT_FAILURE);
+         Exit(EXIT_FAILURE);
       }
    }
 
@@ -134,6 +134,7 @@ int main(int argc, char *argv[]) {
          break;
       }
 
+      cleanup_terminated_children();
       status = eval_line(cmdline);
    }
 
@@ -191,7 +192,7 @@ int eval_line(char *cmdline) {
    // Parent waits for foreground job to terminate
    if(background) {
       printf("background process %d: %s", (int) pid, cmdline);
-      //TODO
+      insert_new_process(ptable, pid);
    } else {
       if(waitpid(pid, &status, 0) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
@@ -248,7 +249,7 @@ int builtin(char *argv[]) {
       if(verbose) {
          printf("%s %d: goodbye, world\n", prog, self_pid);
       }
-      exit(0);
+      Exit(0);
    } else if(strcmp(argv[0], "echo") == 0) {
       // Print (echo) each argument
       unsigned int i=1;
@@ -268,6 +269,63 @@ int builtin(char *argv[]) {
 
    // not a builtin command
    return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+// Ensure no background processes are running and deallocate memory before
+// exiting
+void Exit(int status) {
+   if (ptable->children != 0) {
+      printf("There %s %d background job%s running\n",
+             ((ptable->children > 1) ? "are" : "is"), ptable->children,
+             ((ptable->children > 1) ? "s" : "" ));
+   } else {
+      deallocate_process_table(ptable);
+      exit(status);
+   }
+}
+
+/*----------------------------------------------------------------------------*/
+
+void print_wait_status(pid_t pid, int status) {
+   printf("process %d, completed %snormally, status %d\n", pid,
+          ((status == 0) ? "" : "ab"), status);
+}
+
+//Find all the child processes that have terminated, without waiting.
+void cleanup_terminated_children(void) {
+   pid_t pid;
+   int status;
+
+   while (1)
+   {
+      pid = waitpid(-1, &status, WNOHANG);
+
+      if (pid == 0) {           /* returns 0 if no child process to wait for */
+         break;
+      }
+
+      if (pid == -1) {          /* returns -1 if there was an error */
+         /* errno will have been set by waitpid() */
+         if (errno == ECHILD) { /* no children */
+            break;
+         }
+         if (errno == EINTR) {  /* waitpid() was interrupted by a signal */
+            continue;           /* try again */
+         } else {
+            printf("unexpected error in cleanup_terminated_children(): %s\n",
+                   strerror(errno));
+            break;
+         }
+      }
+
+      print_wait_status(pid, status);
+      update_existing_process(ptable, pid, status);
+      remove_old_process(ptable, pid);
+   }
+
+  return;
 }
 
 /*----------------------------------------------------------------------------*/

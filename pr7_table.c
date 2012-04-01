@@ -88,19 +88,23 @@ int insert_new_process(process_table_t *pt, pid_t pid) {
    if (pt == NULL) {
       return -1;
    }
-   if (pt->ptab == NULL) {
-      return -1;
+
+   child_process_t *new;
+   new = malloc(sizeof(child_process_t));
+   new->pid = pid;
+   new->state = STATE_RUNNING;
+   new->exit_status = 0;
+   new->next = NULL;
+
+   if (pt->ptab == NULL) {    // First entry in the list
+      pt->ptab = new;
+   } else {                   // Append to the end of the list
+      child_process_t *end;
+      for (end = pt->ptab; end->next != NULL; end = end->next);
+      end->next = new;
    }
 
-   child_process_t *end;
-   for (end = pt->ptab; end->next != NULL; end = end->next);
-
-   end->next = malloc(sizeof(child_process_t));
-   end->next->pid = pid;
-   end->next->state = STATE_RUNNING;
-   end->next->exit_status = 0;
-   end->next->next = NULL;
-
+   pt->children++;
    return 0;
 }
 
@@ -137,12 +141,17 @@ int remove_old_process(process_table_t *pt, pid_t pid) {
 
    if (target == NULL) {      // The process with PID pid was not found
       return -1;
+   } else if (prev == NULL) { // The process is the first entry in the list
+      pt->ptab = target->next;
    } else {                   // Remove the process from the list
-      target->state = STATE_TERMINATED;
       prev->next = target->next;
-      free(target);
    }
 
+   // Mark the item as terminated and free it
+   target->state = STATE_TERMINATED;
+   free(target);
+
+   pt->children--;
    return 0;
 }
 
