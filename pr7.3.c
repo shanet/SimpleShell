@@ -117,16 +117,13 @@ int main(int argc, char *argv[]) {
 
       // Read command from input
       // cmdline includes trailing newline
-      fgets(cmdline, MAX_LINE, infile);
+      if(fgets(cmdline, MAX_LINE, infile) == EOF) {
+         break;
+      }
 
       if(ferror(infile)) {
          fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
                  strerror(errno));
-         break;
-      }
-
-      // End of input
-      if(feof(infile)) {
          break;
       }
 
@@ -296,9 +293,10 @@ int builtin(char *argv[]) {
       int exitCode;
       if(argv[1] != NULL && (exitCode = atoi(argv[1])) != 0) {
          Exit(exitCode);
+      } else {
+         Exit(0);
       }
 
-      Exit(0);
    // echo command
    } else if(strcmp(argv[0], "echo") == 0) {
       // Print (echo) each argument
@@ -310,37 +308,51 @@ int builtin(char *argv[]) {
       // Print a trailing a newline
       printf("\n");
       return 0;
+
    // dir command
    } else if(strcmp(argv[0], "dir") == 0) {
-      char *dir = getcwd(NULL, _MAX_INPUT);
+      char *dir;
+      if((dir = getcwd(NULL, _MAX_INPUT)) == NULL) {
+         fprintf(stderr, "%s: Failed to get current working directory: %s\n", prog, strerror(errno));
+         return 0;
+      }
       printf("%s\n", dir);
       free(dir);
       dir = NULL;
       return 0;
+
    // cdir command
    } else if(strcmp(argv[0], "cdir") == 0) {
       char *path;
+
       // If a path wasn't given, default to the HOME env
       if(argv[1] != NULL) {
          path = argv[1];
       } else if((path = getenv("HOME")) == NULL) {
-         fprintf(stderr, "%s: Failed to change directory\n", prog);
+         fprintf(stderr, "%s: Failed to change directory: %s\n", prog, strerror(errno));
          return 0;
       }
 
+      // Expand the given path to the full path
+      char *fullPath = realpath(path, NULL);
+
       // Try to change the directory
-      if(chdir(path) != 0) {
-         fprintf(stderr, "%s: Failed to change directory to \"%s\"\n", prog, path);
-         return 0;
+      if(fullPath == NULL || chdir(fullPath) != 0) {
+         fprintf(stderr, "%s: Failed to change directory to \"%s\": %s\n", prog, fullPath, strerror(errno));
+         goto free_path;
       }
 
       // Update PWD env
-      char fullPath[PATH_MAX];
-      if(realpath(path, fullPath) == NULL || setenv("PWD", fullPath, 1) != 0) {
-         fprintf(stderr, "%s: Directory changed successfully, but failed to update \"PWD\" enviroment variable\n", prog);
+      if(setenv("PWD", fullPath, 1) != 0) {
+         fprintf(stderr, "%s: Directory changed successfully, but failed to update \'PWD\' enviroment variable: %s\n", prog, strerror(errno));
       }
 
+      free_path:
+      free(fullPath);
+      fullPath=NULL;
+
       return 0;
+
    // penv command
    } else if(strcmp(argv[0], "penv") == 0) {
       char *env;
@@ -359,31 +371,35 @@ int builtin(char *argv[]) {
          }
       }
       return 0;
+
    // senv command
    } else if(strcmp(argv[0], "senv") == 0) {
       if(argv[1] != NULL && argv[2] != NULL) {
          if(setenv(argv[1], argv[2], 1) != 0) {
-            fprintf(stderr, "%s: Failed to set enviroment variable \"%s\" to \"%s\"\n", prog, argv[1], argv[2]);
+            fprintf(stderr, "%s: Failed to set enviroment variable \"%s\" to \"%s\": %s\n", prog, argv[1], argv[2], strerror(errno));
          }
       } else {
          fprintf(stderr, "%s: Missing argument(s)\n", prog);
       }
       return 0;
+
    // unsenv command
    } else if(strcmp(argv[0], "unsenv") == 0) {
       if(argv[1] != NULL) {
          if(unsetenv(argv[1]) != 0) {
-            fprintf(stderr, "%s: Failed to unset enviroment variable: \"%s\"\n", prog, argv[1]);
+            fprintf(stderr, "%s: Failed to unset enviroment variable: \"%s\": %s\n", prog, argv[1], strerror(errno));
          }
       } else {
          fprintf(stderr, "%s: No argument specified\n", prog);
       }
       return 0;
-   // pjobs commands
+
+   // pjobs command
    } else if (strcmp(argv[0], "pjobs") == 0) {
       // Print the process table of running jobs
       print_process_table(ptable);
       return 0;
+
    // help command
    } else if(strcmp(argv[0], "help") == 0) {
       printf("%s: Built-in commands:\n", prog);
@@ -398,6 +414,7 @@ int builtin(char *argv[]) {
       printf("\texit [n]\t\t\tExit the shell with specified exit code (0 if omitted)\n");
       printf("\tquit [n]\t\t\tSame as \'exit\'\n");
       return 0;
+
    // Ignore singleton '&'
    } else if (strcmp(argv[0], "&") == 0) {
       return 0;
@@ -416,11 +433,16 @@ void print_prompt(int isLineCont) {
       // as the prompt
       char user[_MAX_INPUT];
       char host[_MAX_INPUT];
-      if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0) {
-         printf("%s@%s$ ", user, host);
+      char *cwd;
+
+      if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0 && (cwd = getcwd(NULL, PATH_MAX)) != NULL) {
+         printf("%s@%s:%s$ ", user, host, cwd);
       } else {
          printf("%s$ ", prog);
       }
+
+      free(cwd);
+      cwd = NULL;
    // If line continuation, just show an arrow for the prompt
    } else {
       printf("> ");
