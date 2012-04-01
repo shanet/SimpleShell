@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
               startup_file, strerror(errno));
    }
 
-   // Input file
+   // Open input file
    FILE *infile;    
    char *infile_name;
    if(argv[optind] == NULL) {
@@ -119,16 +119,18 @@ int main(int argc, char *argv[]) {
 
       // Read command from input
       // cmdline includes trailing newline
-      fgets(cmdline, MAX_LINE, infile);
+      if(fgets(cmdline, MAX_LINE, infile) == NULL) {
+         // Check if EOF was hit
+         if (feof(infile)) {
+            break;
+         }
 
-      if(ferror(infile)) {
-         fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
-                 strerror(errno));
-         break;
-      }
-
-      if (feof(infile)) {
-         break;
+         // Check for error reading file
+         if(ferror(infile)) {
+            fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
+                    strerror(errno));
+            break;
+         }
       }
 
       // Check for line continuation
