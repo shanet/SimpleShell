@@ -325,11 +325,13 @@ int builtin(char *argv[]) {
          path = argv[1];
       } else if((path = getenv("HOME")) == NULL) {
          fprintf(stderr, "%s: Failed to change directory\n", prog);
+         return 0;
       }
 
       // Try to change the directory
       if(chdir(path) != 0) {
          fprintf(stderr, "%s: Failed to change directory to \"%s\"\n", prog, path);
+         return 0;
       }
 
       // Update PWD env
@@ -435,7 +437,7 @@ void print_prompt(int isLineCont) {
 void SIGINT_handler(int sig) {
    if (foreground_pid == 0) {
       fprintf(stderr, "SIGINT ignored\n");
-      print_prompt();
+      print_prompt(0);
    } else {
       kill(foreground_pid, SIGINT);
       foreground_pid = 0;
