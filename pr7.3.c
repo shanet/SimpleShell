@@ -7,7 +7,7 @@
 #include "pr7.h"
 
 int main(int argc, char *argv[]) {
-   int ret = EXIT_SUCCESS;
+   int status = EXIT_SUCCESS;
    char cmdline[MAX_LINE];
 
    prog = argv[0];
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
    FILE *startup = fopen(startup_file, "r");
    if(startup != NULL) {
       while(fgets(cmdline, MAX_LINE, startup) != NULL) {
-         ret = eval_line(cmdline);
+         status = eval_line(cmdline);
       }
 
       if(ferror(startup) && custom_startup) {
@@ -91,7 +91,8 @@ int main(int argc, char *argv[]) {
    FILE *infile;    
    char *infile_name;
    if(argv[optind] == NULL) {
-      infile = stdin; infile_name = "[stdin]";
+      infile = stdin;
+      infile_name = "[stdin]";
    } else {
       infile_name = argv[optind];  
       infile = fopen(infile_name, "r");
@@ -102,8 +103,9 @@ int main(int argc, char *argv[]) {
       }
    }
 
+   // Main input loop
    while(1) {
-      // issue prompt and read command line
+      // If interctive mode, show a prompt
       if(interactive) {
          // Show a prompt in the format of [user]@[hostname]$
          // If user or hostname cannot be determined, fallback to the process name
@@ -117,19 +119,22 @@ int main(int argc, char *argv[]) {
          }
       }
 
+      // Read command from input
       // cmdline includes trailing newline
       fgets(cmdline, MAX_LINE, infile);
+
       if(ferror(infile)) {
          fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
                  strerror(errno));
          break;
       }
+
       // end of file
       if(feof(infile)) {
          break;
       }
 
-      ret = eval_line(cmdline);
+      status = eval_line(cmdline);
    }
 
    if(fclose(infile) != 0) {
@@ -140,7 +145,7 @@ int main(int argc, char *argv[]) {
 
    deallocate_process_table(ptable);
 
-   return ret;
+   return status;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -151,26 +156,26 @@ int main(int argc, char *argv[]) {
  */
 
 int eval_line(char *cmdline) {
-   char *argv[MAX_ARGS];   /* argv for execve() */
-   char buf[MAX_LINE];    /* holds modified command line */
-   int background;        /* should the job run in background or foreground? */
-   pid_t pid;             /* process id */
-   int ret = EXIT_SUCCESS;
+   char *argv[MAX_ARGS];                 /* argv for execve() */
+   char buf[MAX_LINE];                   /* holds modified command line */
+   int background;                       /* should the job run in background or foreground? */
+   pid_t pid;                            /* process id */
+   int status = EXIT_SUCCESS;
 
    strcpy(buf, cmdline);                 /* buf[] will be modified by parse() */
    background = parse(buf, argv);        /* build the argv array */
 
    // Ignore empty lines
    if(argv[0] == NULL) {
-      return ret;
+      return status;
    }
 
-   // The work is done
-   if(builtin(argv) == 1) {
-      return ret;
+   // Check for builtin commands (exit, echo, etc.)
+   if(builtin(argv) == 0) {
+      return status;
    }
 
-   // Child runs user job
+   // Create child to exexute command
    if((pid = fork()) == 0) {
       if(execvp(argv[0], argv) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
@@ -183,13 +188,13 @@ int eval_line(char *cmdline) {
       printf("background process %d: %s", (int) pid, cmdline);
       //TODO
    } else {
-      if(waitpid(pid, &ret, 0) == -1) {
+      if(waitpid(pid, &status, 0) == -1) {
          printf("%s: failed: %s\n", argv[0], strerror(errno));
          exit(EXIT_FAILURE);
       }
    }
 
-   return ret;
+   return status;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -234,20 +239,30 @@ int parse(char *buf, char *argv[]) {
 // If first arg is a builtin command, run it and return true
 int builtin(char *argv[]) {
    // Exit command
-   if(strcmp(argv[0], "exit") == 0) {
+   if(strcmp(argv[0], "exit") == 0 || strcmp(argv[0], "quit") == 0) {
       if(verbose) {
          printf("%s %d: goodbye, world\n", prog, self_pid);
       }
       exit(0);
+   } else if(strcmp(argv[0], "echo") == 0) {
+      // Print (echo) each argument
+      unsigned int i=1;
+      while(argv[i] != NULL) {
+         printf("%s ", argv[i]);
+         i++;
+      }
+      // Print a trailing a newline
+      printf("\n");
+      return 0;
    }
 
    // ignore singleton &
    if(strcmp(argv[0], "&") == 0) {
-      return 1;
+      return 0;
    }
 
    // not a builtin command
-   return 0;
+   return 1;
 }
 
 /*----------------------------------------------------------------------------*/
