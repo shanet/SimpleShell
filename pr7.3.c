@@ -1,7 +1,7 @@
 /* CMPSC 311 Project 7, version 3
  *
  * Authors:    Shane Tully and Gage Ames
- * Emails:     shanet@psu.edu and gra5028@psu.edu
+ * Emails:     spt5063@psu.edu and gra5028@psu.edu
  */
 
 #include "pr7.h"
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
    }
 
    // Main input loop
-   char command[COMMAND_LEN];
+   char command[MAX_COMMAND];
    int isLineCont = 0;
    while(1) {
       // If interctive mode, show a prompt
@@ -319,7 +319,7 @@ int builtin(char *argv[]) {
    // dir command
    } else if(strcmp(argv[0], "dir") == 0) {
       char *dir;
-      if((dir = getcwd(NULL, _MAX_INPUT)) == NULL) {
+      if((dir = getcwd(NULL, MAX_PATH)) == NULL) {
          fprintf(stderr, "%s: Failed to get current working directory: %s\n", prog, strerror(errno));
          return 0;
       }
@@ -409,6 +409,18 @@ int builtin(char *argv[]) {
       }
       return 0;
 
+   // limits command
+   } else if (strcmp(argv[0], "limits") == 0) {
+      // Print the constants used on input limits, # of child processes, etc
+      printf("%s: Limits of the shell:\n", prog);
+      printf("\tMax command length:\t%d chars\n", MAX_COMMAND);
+      printf("\tMax line length:\t%d chars\n", MAX_LINE);
+      printf("\tMax arguments:\t\t%d chars\n", MAX_ARGS);
+      printf("\tMax path length:\t%d chars\n", MAX_PATH);
+      printf("\tMax child processes:\t%d processes\n", MAX_CHILDREN);
+
+      return 0;
+
    // help command
    } else if(strcmp(argv[0], "help") == 0) {
       printf("%s: Built-in commands:\n", prog);
@@ -419,6 +431,7 @@ int builtin(char *argv[]) {
       printf("\tsenv [env] [value]\tSet the specified enviroment variable to the specified value\n");
       printf("\tunsenv [env]\t\tUnset the specified enviroment variable\n");
       printf("\tpjobs\t\t\tPrint table of all running jobs\n");
+      printf("\tlimits\t\t\tPrint various limits of the shell\n");
       printf("\thelp\t\t\tPrint this message\n");
       printf("\texit [n]\t\t\tExit the shell with specified exit code (0 if omitted)\n");
       printf("\tquit [n]\t\t\tSame as \'exit\'\n");
@@ -440,12 +453,12 @@ void print_prompt(int isLineCont) {
       // Show a prompt in the format of [user]@[hostname]$
       // If user or hostname cannot be determined, fallback to the process name
       // as the prompt
-      char user[_MAX_INPUT];
-      char host[_MAX_INPUT];
+      char user[MAX_LINE];
+      char host[MAX_LINE];
       char *cwd = NULL;
       char *dir;
 
-      if(getlogin_r(user, _MAX_INPUT) == 0 && gethostname(host, _MAX_INPUT) == 0 && (cwd = getcwd(NULL, PATH_MAX)) != NULL) {
+      if(getlogin_r(user, MAX_LINE) == 0 && gethostname(host, MAX_LINE) == 0 && (cwd = getcwd(NULL, MAX_PATH)) != NULL) {
          // Move cwd to the deepest directory
          dir = strrchr(cwd, '/')+1;
          printf("%s@%s:%s$ ", user, host, dir);

@@ -17,8 +17,7 @@
 #include <sys/wait.h>
 #include "pr7_table.h"
 
-#define _MAX_INPUT 255
-#define COMMAND_LEN 4096
+#define MAX_COMMAND 4096
 #define MAX_ARGS 128
 #define STARTUP_FILE "pr7.init"
 
@@ -43,7 +42,7 @@ static pid_t foreground_pid = 0;
 
 #else
 /* use the default value for this system */
-#define MAX_LINE        _MAX_INPUT
+#define MAX_LINE        255
 #define MAX_PATH        PATH_MAX
 #define MAX_CHILDREN    CHILD_MAX
 
