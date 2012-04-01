@@ -75,14 +75,16 @@ int print_process_table(process_table_t *pt) {
       return ERROR;
    }
 
-   printf("  process table\n");
-   printf("       pid         state        status    program\n");
+   if (pt->children > 0) {
+      printf("  process table\n");
+      printf("       pid         state        status    program\n");
 
-   child_process_t *child;
-   for (child = pt->ptab; child != NULL; child = child->next) {
-      printf("    %6d    %10s    0x%08x    %s\n", child->pid,
-             state[child->state], child->exit_status,
-             safe_string(child->program));
+      child_process_t *child;
+      for (child = pt->ptab; child != NULL; child = child->next) {
+           printf("    %6d    %10s    0x%08x    %s\n", child->pid,
+                  state[child->state], child->exit_status,
+                  safe_string(child->program));
+      }
    }
 
    return 0;

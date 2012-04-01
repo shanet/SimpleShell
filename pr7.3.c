@@ -168,6 +168,11 @@ int main(int argc, char *argv[]) {
       memset(command, '\0', strlen(command));
    }
 
+   if(ferror(infile)) {
+      fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
+              strerror(errno));
+   }
+
    if(fclose(infile) != 0) {
       fprintf(stderr, "%s: cannot close file %s: %s\n", prog, startup_file,
              strerror(errno));
