@@ -8,8 +8,6 @@
  *
  */
 
-/*----------------------------------------------------------------------------*/
-
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +24,7 @@
 char *prog;
 int  self_pid;
 int  verbose;
+int echo;
 process_table_t *ptable;
 
 /*

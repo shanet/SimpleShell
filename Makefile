@@ -16,7 +16,7 @@ sun:
 	c99 -v -D_POSIX_C_SOURCE=200112L -o $(BINARY) $(SRC)
 
 gcc-debug:
-	gcc $(CFLAGS) -g -O0 -o $(BINARY) $(SRC)
+	gcc $(CFLAGS) -D_GNU_SOURCE -g -O0 -o $(BINARY) $(SRC)
 
 clean:
 	rm $(BINARY)
