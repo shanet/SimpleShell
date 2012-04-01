@@ -440,8 +440,8 @@ int builtin(char *argv[]) {
       printf("\tpjobs\t\t\tPrint table of all running jobs\n");
       printf("\tlimits\t\t\tPrint various limits of the shell\n");
       printf("\thelp\t\t\tPrint this message\n");
-      printf("\texit [n]\t\t\tExit the shell with specified exit code (0 if omitted)\n");
-      printf("\tquit [n]\t\t\tSame as \'exit\'\n");
+      printf("\texit [n]\t\tExit the shell with specified exit code (0 if omitted)\n");
+      printf("\tquit [n]\t\tSame as \'exit\'\n");
       return 0;
 
    // Ignore singleton '&'
