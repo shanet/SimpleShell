@@ -59,7 +59,9 @@ int main(int argc, char *argv[]) {
    }
 
    // Set up the process table
-   ptable = allocate_process_table();
+   if ((ptable = allocate_process_table()) == NULL) {
+      fprintf(stderr, "%s: Could not allocate the process table.", prog);
+   }
 
    // Prevent Ctrl+C from terminating the shell
    install_signal_handler(SIGINT, SIGINT_handler);
@@ -296,6 +298,7 @@ int builtin(char *argv[]) {
       } else {
          Exit(0);
       }
+      return 0;      // Exit() will return if there are background jobs
 
    // echo command
    } else if(strcmp(argv[0], "echo") == 0) {
@@ -397,7 +400,9 @@ int builtin(char *argv[]) {
    // pjobs command
    } else if (strcmp(argv[0], "pjobs") == 0) {
       // Print the process table of running jobs
-      print_process_table(ptable);
+      if (print_process_table(ptable) != 0) {
+         fprintf(stderr, "%s: Failed to print process table\n", prog);
+      }
       return 0;
 
    // help command
@@ -517,7 +522,9 @@ void Exit(int status) {
              ((ptable->children > 1) ? "are" : "is"), ptable->children,
              ((ptable->children > 1) ? "s" : "" ));
       if (verbose) {
-         print_process_table(ptable);
+         if (print_process_table(ptable) != 0) {
+            fprintf(stderr, "%s: Failed to print the process table.", prog);
+         }
       }
    } else {
       deallocate_process_table(ptable);

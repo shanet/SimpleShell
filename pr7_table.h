@@ -15,10 +15,12 @@
 #include <string.h>
 #include <errno.h>
 
+#define ERROR -1
+
+// Process state constants
 #define STATE_NONE       0
 #define STATE_RUNNING    1
 #define STATE_TERMINATED 2
-
 static char *state[] = { "none", "running", "terminated" };
 
 typedef struct child_process {

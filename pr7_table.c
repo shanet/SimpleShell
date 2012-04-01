@@ -28,7 +28,7 @@
 
 int number_of_children(process_table_t *pt) {
    if(pt != NULL) {
-      return -1;
+      return ERROR;
    }
 
    return pt->children;
@@ -71,7 +71,7 @@ void deallocate_process_table(process_table_t *pt) {
 /* return 0 if successful, -1 if not */
 int print_process_table(process_table_t *pt) {
    if (pt == NULL) {
-      return -1;
+      return ERROR;
    }
 
    printf("  process table\n");
@@ -89,7 +89,7 @@ int print_process_table(process_table_t *pt) {
 
 int insert_new_process(process_table_t *pt, pid_t pid, char *program) {
    if (pt == NULL) {
-      return -1;
+      return ERROR;
    }
 
    child_process_t *new;
@@ -114,28 +114,30 @@ int insert_new_process(process_table_t *pt, pid_t pid, char *program) {
 
 int update_existing_process(process_table_t *pt, pid_t pid, int exit_status) {
    if (pt == NULL) {
-      return -1;
+      return ERROR;
    }
 
+   // Search the process table for the process with PID pid
    child_process_t *target = pt->ptab;
    while (target != NULL && target->pid != pid) {
       target = target->next;
    }
 
-   if (target == NULL) {      // The process with PID pid was not found
-      return -1;
-   } else {                   // Change the exit status of the process
-      target->exit_status = exit_status;
+   if (target == NULL) {               // The process with PID pid was not found
+      return ERROR;
    }
-
+ 
+   target->exit_status = exit_status;  // Change the exit status of the process
    return 0;
 }
 
 int remove_old_process(process_table_t *pt, pid_t pid) {
    if (pt == NULL) {
-      return -1;
+      return ERROR;
    }
 
+   // Search the process table for the process with PID pid, maintaining
+   //    a pointer to the item before it to facilitate proper removal of target
    child_process_t *prev = NULL;
    child_process_t *target = pt->ptab;
    while (target != NULL && target->pid != pid) {
@@ -144,8 +146,12 @@ int remove_old_process(process_table_t *pt, pid_t pid) {
    }
 
    if (target == NULL) {      // The process with PID pid was not found
-      return -1;
-   } else if (prev == NULL) { // The process is the first entry in the list
+      return ERROR;
+   }
+
+   // Preserve the linked list by updating the next pointer of the node before
+   //    target to point to target->next
+   if (prev == NULL) {        // The target is the first entry in the list
       pt->ptab = target->next;
    } else {                   // Remove the process from the list
       prev->next = target->next;
