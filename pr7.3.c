@@ -285,7 +285,7 @@ int builtin(char *argv[]) {
    } else if(strcmp(argv[0], "cdir") == 0) {
       char *path;
       // If a path wasn't given, default to the HOME env
-      if(argv[1] == NULL) {
+      if(argv[1] != NULL) {
          path = argv[1];
       } else if((path = getenv("HOME")) == NULL) {
          fprintf(stderr, "%s: Failed to change directory\n", prog);
