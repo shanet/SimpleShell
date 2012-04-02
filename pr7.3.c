@@ -127,8 +127,8 @@ int main(int argc, char *argv[]) {
 
          // Check for error reading file
          if(ferror(infile)) {
-            fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
-                    strerror(errno));
+            fprintf(stderr, "%s: error reading file %s: %s\n", prog,
+                    infile_name, strerror(errno));
             break;
          }
       }
@@ -166,11 +166,6 @@ int main(int argc, char *argv[]) {
       // Reset command buffer and line continuation flag for the next line of input
       isLineCont = 0;
       memset(command, '\0', strlen(command));
-   }
-
-   if(ferror(infile)) {
-      fprintf(stderr, "%s: error reading file %s: %s\n", prog, infile_name,
-              strerror(errno));
    }
 
    if(fclose(infile) != 0) {
