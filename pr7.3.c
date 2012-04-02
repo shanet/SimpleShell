@@ -343,7 +343,8 @@ int builtin(char *argv[]) {
       if(argv[1] != NULL) {
          path = argv[1];
       } else if((path = getenv("HOME")) == NULL) {
-         fprintf(stderr, "%s: Failed to change directory: %s\n", prog, strerror(errno));
+         fprintf(stderr, "%s: Failed to change directory: %s\n", prog,
+                 strerror(errno));
          return 0;
       }
 
@@ -351,17 +352,22 @@ int builtin(char *argv[]) {
       char *fullPath = realpath(path, NULL);
 
       // Try to change the directory
+      int dirChanged = 1;        // Assume the directory change was successful
       if(fullPath == NULL || chdir(fullPath) != 0) {
-         fprintf(stderr, "%s: Failed to change directory to \"%s\": %s\n", prog, fullPath, strerror(errno));
-         goto free_path;
+         fprintf(stderr, "%s: Failed to change directory to \"%s\": %s\n", prog,
+                 fullPath, strerror(errno));
+         dirChanged = 0;         // The directory change failed
       }
 
-      // Update PWD env
-      if(setenv("PWD", fullPath, 1) != 0) {
-         fprintf(stderr, "%s: Directory changed successfully, but failed to update \'PWD\' enviroment variable: %s\n", prog, strerror(errno));
+      if (dirChanged) {
+         // Update PWD env
+         if(setenv("PWD", fullPath, 1) != 0) {
+            fprintf(stderr, "%s: Directory changed successfully, but failed to "
+                    "update \'PWD\' enviroment variable: %s\n", prog,
+                     strerror(errno));
+         }
       }
 
-      free_path:
       free(fullPath);
       fullPath=NULL;
 
