@@ -108,11 +108,10 @@ int main(int argc, char *argv[]) {
       }
    }
 
-   // If interactive, create the prompts and set autocomplete to readline
+   // If interactive, create the prompts
    if(interactive) {
       ps1 = get_prompt(0);
       ps2 = get_prompt(1);
-      //rl_bind_key('\t', rl_complete);
    }
 
    // Main input loop
@@ -282,7 +281,7 @@ int eval_line(char *cmdline) {
 
       // Parent waits for foreground job to terminate
       if(background) {
-         printf("background process %d: %s", (int) pid, buf);
+         printf("background process %d: %s\n", (int) pid, buf);
          insert_new_process(ptable, pid, buf);
       } else {
          foreground_pid = pid;
