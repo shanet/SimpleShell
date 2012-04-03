@@ -7,8 +7,8 @@
 #include "pr7.h"
 
 int main(int argc, char *argv[]) {
-   int status = EXIT_SUCCESS;
    char cmdline[MAX_LINE];
+   int status = EXIT_SUCCESS;
 
    prog = argv[0];
    self_pid = (int) getpid();
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "%s: Could not allocate the process table.", prog);
    }
 
-   // Prevent Ctrl+C from terminating the shell
+   // Prevent SIGINT's from terminating the shell
    install_signal_handler(SIGINT, SIGINT_handler);
 
    if(verbose) {
@@ -108,18 +108,43 @@ int main(int argc, char *argv[]) {
       }
    }
 
+   // If interactive, create the prompts and set autocomplete to readline
+   if(interactive) {
+      ps1 = get_prompt(0);
+      ps2 = get_prompt(1);
+      //rl_bind_key('\t', rl_complete);
+   }
+
    // Main input loop
    char command[MAX_COMMAND];
+   char *tmp_cmdline;
    int isLineCont = 0;
    while(1) {
-      // If interctive mode, show a prompt
-      if(interactive) {
-         print_prompt(isLineCont);
-      }
+      // If interctive mode, show a prompt and get input from readline
+      if(interactive) {         
+         // Clear previous input from cmdline
+         memset(cmdline, '\0', strlen(cmdline));
 
-      // Read command from input
-      // cmdline includes trailing newline
-      if(fgets(cmdline, MAX_LINE, infile) == NULL) {
+         // Read the input. Returns NULL on EOF
+         if((tmp_cmdline = readline((isLineCont) ? ps2 : ps1)) == NULL) {
+            break;
+         }
+
+         // Copy tmp_cmdline into cmdline (check buffer sizes too)
+         size_t tmp_cmdline_len = strlen(tmp_cmdline);
+         if(tmp_cmdline_len >= MAX_LINE-2) {
+            tmp_cmdline_len = MAX_LINE-2;
+         }
+         
+         strncpy(cmdline, tmp_cmdline, strlen(tmp_cmdline));
+         // eval_line expects all input to have a trailing newline
+         cmdline[tmp_cmdline_len] = '\n';
+         cmdline[tmp_cmdline_len+1] = '\0';
+
+         // Add the input into the history
+         add_history(tmp_cmdline);
+      // If not interactive mode, just use fgets to get input
+      } else if(fgets(cmdline, MAX_LINE, infile) == NULL) {
          // Check if EOF was hit
          if (feof(infile)) {
             break;
@@ -206,7 +231,7 @@ int eval_line(char *cmdline) {
       if(sc != NULL) {
          // Copy cmdline up to the semicolon into buf         
          sc_len = strlen(sc);
-         strncpy(buf, cmdline, cmdline_len - sc_len + 1);
+         strncpy(buf, cmdline, cmdline_len - sc_len);
 
          // The parse function expects whitespace at the end of each command
          // insert it and the null terminator
@@ -389,16 +414,20 @@ int builtin(char *argv[]) {
       if(fullPath == NULL || chdir(fullPath) != 0) {
          fprintf(stderr, "%s: Failed to change directory to \"%s\": %s\n", prog,
                  fullPath, strerror(errno));
-         dirChanged = 0;         // The directory change failed
+         // The directory change failed
+         dirChanged = 0;
       }
 
-      if (dirChanged) {
+      if(dirChanged) {
          // Update PWD env
          if(setenv("PWD", fullPath, 1) != 0) {
             fprintf(stderr, "%s: Directory changed successfully, but failed to "
                     "update \'PWD\' enviroment variable: %s\n", prog,
                      strerror(errno));
          }
+         // Update PS1 prompt
+         free(ps1);
+         ps1 = get_prompt(0);
       }
 
       free(fullPath);
@@ -494,48 +523,54 @@ int builtin(char *argv[]) {
 
 /*----------------------------------------------------------------------------*/
 
-void print_prompt(int isLineCont) {
+char* get_prompt(int isLineCont) {
+   char user[MAX_LINE];
+   char host[MAX_LINE];
+   char *cwd = NULL;
+   char *dir;
+   char *prompt = malloc(MAX_LINE);
+
+   // Make sure malloc didn't fail
+   if(prompt == NULL) return NULL;
+
    if(!isLineCont) {
       // Show a prompt in the format of [user]@[hostname]$
       // If user or hostname cannot be determined, fallback to the process name
       // as the prompt
-      char user[MAX_LINE];
-      char host[MAX_LINE];
-      char *cwd = NULL;
-      char *dir;
-
       if(getlogin_r(user, MAX_LINE) == 0 && gethostname(host, MAX_LINE) == 0 && (cwd = getcwd(NULL, MAX_PATH)) != NULL) {
          // Move cwd to the deepest directory
          dir = strrchr(cwd, '/')+1;
-         printf("%s@%s:%s$ ", user, host, dir);
+         sprintf(prompt, "%s@%s:%s$ ", user, host, dir);
       } else {
-         printf("%s$ ", prog);
+         sprintf(prompt, "%s$ ", prog);
       }
 
       free(cwd);
       cwd = NULL;
    // If line continuation, just show an arrow for the prompt
    } else {
-      printf("> ");
+      sprintf(prompt, "> ");
    }
 
    // Flush stdout to ensure the prompt gets written
    // (It doesn't end with a new line, so line buffering can delay its display)
    fflush(stdout);
+
+   return prompt;
 }
 
 /*----------------------------------------------------------------------------*/
 
 // Interrupt signal handler for the shell and foreground process
 void SIGINT_handler(int sig) {
-   if (sig != SIGINT) {
+   if(sig != SIGINT) {
       fprintf(stderr, "%s: SIGINT_handler() recieved incorrect signal.", prog);
       return;
    }
 
-   if (foreground_pid == 0) {
+   if(foreground_pid == 0) {
       fprintf(stderr, "SIGINT ignored\n");
-      print_prompt(0);
+      printf("%s\n", ps1);
    } else {
       kill(foreground_pid, SIGINT);
       foreground_pid = 0;
@@ -554,7 +589,7 @@ int install_signal_handler(int sig, sighandler_t func) {
 
    ret = sigaction(sig, &sigact, NULL);	// do the installation
 
-   if (ret == -1) {              // error condition
+   if(ret == -1) {              // error condition
       fprintf(stderr, "install_signal_handler(%d) failed: %s\n", sig,
               strerror(errno));
    }
@@ -588,17 +623,21 @@ int ignore_signal_handler(int sig) {
 // Ensure no background processes are running and deallocate memory before
 // exiting
 void Exit(int status) {
-   if (ptable->children != 0) {
+   if(ptable->children != 0) {
       printf("There %s %d background job%s running.\n",
              ((ptable->children > 1) ? "are" : "is"), ptable->children,
              ((ptable->children > 1) ? "s" : "" ));
-      if (verbose) {
+      if(verbose) {
          if (print_process_table(ptable) != 0) {
             fprintf(stderr, "%s: Failed to print the process table.", prog);
          }
       }
    } else {
       deallocate_process_table(ptable);
+      free(ps1);
+      free(ps2);
+      ps1 = NULL;
+      ps2 = NULL;
       exit(status);
    }
 }

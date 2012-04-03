@@ -15,24 +15,18 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include "pr7_table.h"
 
 #define MAX_COMMAND 4096
 #define MAX_ARGS 128
 #define STARTUP_FILE "pr7.init"
 
-char  *prog;
-int   self_pid;
-int   verbose;
-int   echo;
-process_table_t *ptable;
-static pid_t foreground_pid = 0;
-
-/*
- *  MAX_LINE            input line length
- *  MAX_PATH            directory name length
- *  MAX_CHILDREN        number of child processes
- */
+// MAX_LINE            input line length
+// MAX_PATH            directory name length
+// MAX_CHILDREN        number of child processes
 
 #ifdef _POSIX_C_SOURCE
 /* use the minimal value for maximal portability */
@@ -48,11 +42,21 @@ static pid_t foreground_pid = 0;
 
 #endif
 
+char *prog;
+char *ps1;
+char *ps2;
+int self_pid;
+int verbose;
+int echo;
+process_table_t *ptable;
+static pid_t foreground_pid = 0;
+
 void usage(int status);                         /* print usage information */
 int eval_line(char *cmdline);                   /* evaluate a command line */
 int parse(char *buf, char *argv[]);             /* build the argv array */
 int builtin(char *argv[]);                      /* if builtin command, run it */
-void print_prompt(int isLineCont);
+char* get_prompt(int isLineCont);
+void update_prompt(int isLineCont);
 void Exit(int status);
 void print_wait_status(pid_t pid, int status);
 void cleanup_terminated_children(void);
