@@ -184,55 +184,92 @@ int main(int argc, char *argv[]) {
 // Evaluate a command line
 int eval_line(char *cmdline) {
    char *argv[MAX_ARGS];                 /* argv for execve() */
-   char buf[MAX_LINE];                   /* holds modified command line */
    int background;                       /* should the job run in background or foreground? */
+   int single = 1;                       /* there is only a single command in cmdline */
    pid_t pid;                            /* process id */
    int status = EXIT_SUCCESS;
+   char *sc;                             /* index of semicolon in cmdline */
+   size_t sc_len;                        /* length of sc */
+   size_t cmdline_len = strlen(cmdline); /* length of cmdline */
+   char buf[cmdline_len+1];              /* modified command */
 
-   strcpy(buf, cmdline);                 /* buf[] will be modified by parse() */
-   background = parse(buf, argv);        /* build the argv array */
-
-   // Ignore empty lines
-   if(argv[0] == NULL) {
-      return status;
+   // Check for only single command
+   if((sc = strchr(cmdline, ';')) != NULL) {
+      single = 0;
    }
 
-   // If echo is on, print out the command
-   if(echo) {
-      printf("%s", cmdline);
-   }
+   // Check for semicolons denoting multiple commands in a single line of input
+   while((sc = strchr(cmdline, ';')) != NULL || single) {
+      // Only allow single to cause one loop iteration
+      single = 0;
 
-   // Check for builtin commands (exit, echo, etc.)
-   if(builtin(argv) == 0) {
-      return status;
-   }
+      if(sc != NULL) {
+         // Copy cmdline up to the semicolon into buf         
+         sc_len = strlen(sc);
+         strncpy(buf, cmdline, cmdline_len - sc_len + 1);
 
-   // Create child to exexute command
-   if((pid = fork()) == 0) {
-      // Ignore SIGINT in the child -- our shell manages interrupts to children
-      ignore_signal_handler(SIGINT);
+         // The parse function expects whitespace at the end of each command
+         // insert it and the null terminator
+         buf[cmdline_len - sc_len] = '\n';
+         buf[cmdline_len - sc_len+1] = '\0';
 
-      // Try to replace the child with the desired program 
-      if(execvp(argv[0], argv) == -1) {
-         printf("%s: failed: %s\n", argv[0], strerror(errno));
+         // Move cmdline past the semicolon and update the len variable
+         cmdline = sc+1;
+         cmdline_len = strlen(cmdline);
+
+         // Assume there's at least one more command after the current semi-colon
+         // so set single back to 1 to force another loop iteration
+         single = 1;
+      } else {
+         // If no semi-colon copy cmdline into buf verbatim
+         strncpy(buf, cmdline, cmdline_len);
+         buf[cmdline_len] = '\0';
+      }
+
+      // Build argv array
+      background = parse(buf, argv);
+
+      // Ignore empty lines
+      if(argv[0] == NULL) {
+         continue;
+      }
+
+      // If echo is on, print out the command
+      if(echo) {
+         printf("%s", buf);
+      }
+
+      // Check for builtin commands (exit, echo, etc.)
+      if(builtin(argv) == 0) {
+         continue;
+      }
+
+      // Create child to exexute command
+      if((pid = fork()) == 0) {
+         // Ignore SIGINT in the child -- our shell manages interrupts to children
+         ignore_signal_handler(SIGINT);
+
+         // Try to replace the child with the desired program
+         execvp(argv[0], argv);
+         printf("%s: failed: %s\n", buf, strerror(errno));
          _exit(EXIT_FAILURE);
       }
-   }
 
-   // Parent waits for foreground job to terminate
-   if(background) {
-      printf("background process %d: %s", (int) pid, cmdline);
-      insert_new_process(ptable, pid, argv[0]);
-   } else {
-      foreground_pid = pid;
-      if(waitpid(pid, &status, 0) == -1) {
-         printf("%s: failed: %s\n", argv[0], strerror(errno));
-         exit(EXIT_FAILURE);
-      }
-      foreground_pid = 0;
+      // Parent waits for foreground job to terminate
+      if(background) {
+         printf("background process %d: %s", (int) pid, buf);
+         insert_new_process(ptable, pid, buf);
+      } else {
+         foreground_pid = pid;
+         if(waitpid(pid, &status, 0) == -1) {
+            printf("%s: failed: %s\n", buf, strerror(errno));
+            exit(EXIT_FAILURE);
+         }
+         foreground_pid = 0;
 
-      if (verbose) {
-          print_wait_status(pid, status);
+         if(verbose) {
+            print_wait_status(pid, status);
+         }
       }
    }
 
@@ -271,14 +308,15 @@ int parse(char *buf, char *argv[]) {
       buf = delim + 1;                 /* start argv[i+1]? */
    }
    
+   // NULL terminate the argv array
    argv[argc] = NULL;
 
    if(argc == 0) {                     /* blank line */
       return 0;
    }
 
-   // Should the job run in the background?
-   if((bg =(strcmp(argv[argc-1], "&") == 0))) {
+   // If the last arg is an ampersand, the job should run in the background
+   if((bg = (strcmp(argv[argc-1], "&") == 0))) {
       argv[--argc] = NULL;
    }
 
