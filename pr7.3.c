@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
             tmp_cmdline_len = MAX_LINE-2;
          }
          
-         strncpy(cmdline, tmp_cmdline, strlen(tmp_cmdline));
+         strncpy(cmdline, tmp_cmdline, tmp_cmdline_len);
          // eval_line expects all input to have a trailing newline
          cmdline[tmp_cmdline_len] = '\n';
          cmdline[tmp_cmdline_len+1] = '\0';
