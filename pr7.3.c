@@ -423,7 +423,7 @@ int builtin(char *argv[]) {
       return 0;
 
    // cdir command
-   } else if(strcmp(argv[0], "cdir") == 0) {
+   } else if(strcmp(argv[0], "cdir") == 0 || strcmp(argv[0], "cd") == 0) {
       char *path;
 
       // If a path wasn't given, default to the HOME env
@@ -439,10 +439,10 @@ int builtin(char *argv[]) {
       char *fullPath = realpath(path, NULL);
 
       // Try to change the directory
-      int dirChanged = 1;        // Assume the directory change was successful
+      int dirChanged = 1;
       if(fullPath == NULL || chdir(fullPath) != 0) {
          fprintf(stderr, "%s: Failed to change directory to \"%s\": %s\n", prog,
-                 fullPath, strerror(errno));
+                 path, strerror(errno));
          // The directory change failed
          dirChanged = 0;
       }
