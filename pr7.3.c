@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
    }
 
    // Prevent SIGINT's from terminating the shell
-   install_signal_handler(SIGINT, SIGINT_handler);
+   //install_signal_handler(SIGINT, SIGINT_handler);
 
    if(verbose) {
       printf("%s %d: hello, world\n", prog, self_pid);
@@ -228,7 +228,7 @@ int eval_line(char *cmdline) {
       single = 0;
 
       if(sc != NULL) {
-         // Copy cmdline up to the semicolon into buf         
+         // Copy cmdline up to the semicolon into buf
          sc_len = strlen(sc);
          strncpy(buf, cmdline, cmdline_len - sc_len);
 
@@ -304,9 +304,10 @@ int eval_line(char *cmdline) {
 
 // Parse the command line and build the argv array
 int parse(char *buf, char *argv[]) {
-   char *delim;          /* points to first whitespace delimiter */
+   char *delim = NULL;   /* points to first whitespace delimiter */
    int argc = 0;         /* number of args */
    int bg;               /* background job? */
+   int quote = 0;
 
    char whsp[] = " \t\n\v\f\r";          /* whitespace characters */
 
@@ -321,17 +322,47 @@ int parse(char *buf, char *argv[]) {
       *end = '\0';
    }
 
-   while(1) {                          /* build the argv list */
-      buf += strspn(buf, whsp);        /* skip leading whitespace */
-      delim = strpbrk(buf, whsp);      /* next whitespace char or NULL */
+   // Build the argv list
+   while(1) {
+      // Skip leading whitespace 
+      buf += strspn(buf, whsp);
+
+      // If buf starts a quote, skip to the end
+      if(*buf == '\"') {
+         quote = 1;
+         // Skip the opening quote
+         buf++;
+
+         // Move delim to the closing quote
+         // If a closing quote wasn't found, move buf back and treat the args as regular
+         if((delim = strchr(buf, '\"')) == NULL) {
+            buf--;
+            quote = 0;
+         } else {
+            // Skip the closing quote, by replacing it with whitespace so it
+            // isn't treated as an argument itself
+            *delim = whsp[0];
+         }
+      }
+
+      if(!quote) {
+         // Skip to the next whitespace char or NULL
+         delim = strpbrk(buf, whsp);
+      }
+
       if(delim == NULL) {              /* end of line */
          break;
       }
+
       argv[argc++] = buf;              /* start argv[i] */
+      printf("buf: %s\n", buf);
       *delim = '\0';                   /* terminate argv[i] */
       buf = delim + 1;                 /* start argv[i+1]? */
+
+      // Reset quote
+      quote = 0;
    }
-   
+
    // NULL terminate the argv array
    argv[argc] = NULL;
 
