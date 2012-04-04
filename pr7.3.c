@@ -355,7 +355,6 @@ int parse(char *buf, char *argv[]) {
       }
 
       argv[argc++] = buf;              /* start argv[i] */
-      printf("buf: %s\n", buf);
       *delim = '\0';                   /* terminate argv[i] */
       buf = delim + 1;                 /* start argv[i+1]? */
 
