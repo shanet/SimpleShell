@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
    }
 
    // Prevent SIGINT's from terminating the shell
-   //install_signal_handler(SIGINT, SIGINT_handler);
+   install_signal_handler(SIGINT, SIGINT_handler);
 
    if(verbose) {
       printf("%s %d: hello, world\n", prog, self_pid);
@@ -142,7 +142,9 @@ int main(int argc, char *argv[]) {
 
          // Read the input. Returns NULL on EOF
          if((tmp_cmdline = readline((isLineCont) ? ps2 : ps1)) == NULL) {
-            break;
+            printf("\n");
+            Exit(0);
+            continue;   // If exit returned there are background processes
          }
 
          // Copy tmp_cmdline into cmdline (check buffer sizes too)
@@ -615,7 +617,7 @@ void SIGINT_handler(int sig) {
 
    if(foreground_pid == 0) {
       fprintf(stderr, "SIGINT ignored\n");
-      printf("%s\n", ps1);
+      printf("%s", ps1);
    } else {
       kill(foreground_pid, SIGINT);
       foreground_pid = 0;
@@ -668,6 +670,9 @@ int ignore_signal_handler(int sig) {
 // Ensure no background processes are running and deallocate memory before
 // exiting
 void Exit(int status) {
+   // Check if any child processes have exited
+   cleanup_terminated_children();
+
    if(ptable->children != 0) {
       printf("There %s %d background job%s running.\n",
              ((ptable->children > 1) ? "are" : "is"), ptable->children,
@@ -679,6 +684,7 @@ void Exit(int status) {
       }
    } else {
       deallocate_process_table(ptable);
+      ptable = NULL;
       free(ps1);
       free(ps2);
       ps1 = NULL;
