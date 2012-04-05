@@ -71,7 +71,14 @@ int main(int argc, char *argv[]) {
    }
 
    // Startup file
-   FILE *startup = fopen(startup_file, "r");
+   FILE *startup;
+   if(strcmp(startup_file, "-") == 0) {
+      startup = stdin;
+      startup_file = "[stdin]";
+   } else {
+      startup = fopen(startup_file, "r");
+   }
+
    if(startup != NULL) {
       while(fgets(cmdline, MAX_LINE, startup) != NULL) {
          status = eval_line(cmdline);
@@ -82,11 +89,14 @@ int main(int argc, char *argv[]) {
                  strerror(errno));
       }
 
-      if(fclose(startup) != 0) {
-         fprintf(stderr, "%s: cannot close file %s: %s\n", prog, startup_file,
-                 strerror(errno));
+      // Close the starup file (unless it is stdin)
+      if(startup != stdin) {
+         if(fclose(startup) != 0) {
+            fprintf(stderr, "%s: cannot close file %s: %s\n", prog,
+                    startup_file, strerror(errno));
+         }
+         startup = NULL;
       }
-      startup = NULL;
    } else if(custom_startup) {
       fprintf(stderr, "%s: cannot open startup file %s: %s\n", prog,
               startup_file, strerror(errno));
@@ -95,7 +105,7 @@ int main(int argc, char *argv[]) {
    // Open input file
    FILE *infile;    
    char *infile_name;
-   if(argv[optind] == NULL) {
+   if(argv[optind] == NULL || strcmp(argv[optind], "-") == 0) {
       infile = stdin;
       infile_name = "[stdin]";
    } else {
