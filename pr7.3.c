@@ -77,7 +77,14 @@ int main(int argc, char *argv[]) {
    }
 
    // Startup file
-   FILE *startup = fopen(startup_file, "r");
+   FILE *startup;
+   if(strcmp(startup_file, "-") == 0) {
+      startup = stdin;
+      startup_file = "[stdin]";
+   } else {
+      startup = fopen(startup_file, "r");
+   }
+
    if(startup != NULL) {
       while(fgets(cmdline, MAX_LINE, startup) != NULL) {
          status = eval_line(cmdline);
@@ -88,11 +95,14 @@ int main(int argc, char *argv[]) {
                  strerror(errno));
       }
 
-      if(fclose(startup) != 0) {
-         fprintf(stderr, "%s: cannot close file %s: %s\n", prog, startup_file,
-                 strerror(errno));
+      // Close the starup file (unless it is stdin)
+      if(startup != stdin) {
+         if(fclose(startup) != 0) {
+            fprintf(stderr, "%s: cannot close file %s: %s\n", prog,
+                    startup_file, strerror(errno));
+         }
+         startup = NULL;
       }
-      startup = NULL;
    } else if(custom_startup) {
       fprintf(stderr, "%s: cannot open startup file %s: %s\n", prog,
               startup_file, strerror(errno));
@@ -101,9 +111,15 @@ int main(int argc, char *argv[]) {
    // Open input file
    FILE *infile;    
    char *infile_name;
-   if(argv[optind] == NULL) {
+   if(argv[optind] == NULL || strcmp(argv[optind], "-") == 0) {
       infile = stdin;
       infile_name = "[stdin]";
+      
+      // If stdin represents input from the terminal (as opposed to from a
+      // pipe), make the shell interactive.
+      if(isatty(STDIN_FILENO)) {
+         interactive = 1;
+      }
    } else {
       infile_name = argv[optind];  
       infile = fopen(infile_name, "r");
@@ -132,7 +148,9 @@ int main(int argc, char *argv[]) {
 
          // Read the input. Returns NULL on EOF
          if((tmp_cmdline = readline((isLineCont) ? ps2 : ps1)) == NULL) {
-            break;
+            printf("\n");
+            Exit(0);
+            continue;   // If exit returned there are background processes
          }
 
          // Copy tmp_cmdline into cmdline (check buffer sizes too)
@@ -672,7 +690,7 @@ void SIGINT_handler(int sig) {
 
    if(foreground_pid == 0) {
       fprintf(stderr, "SIGINT ignored\n");
-      printf("%s\n", ps1);
+      printf("%s", ps1);
    } else {
       kill(foreground_pid, SIGINT);
       foreground_pid = 0;
@@ -725,6 +743,9 @@ int ignore_signal_handler(int sig) {
 // Ensure no background processes are running and deallocate memory before
 // exiting
 void Exit(int status) {
+   // Check if any child processes have exited
+   cleanup_terminated_children();
+
    if(ptable->children != 0) {
       printf("There %s %d background job%s running.\n",
              ((ptable->children > 1) ? "are" : "is"), ptable->children,
@@ -736,6 +757,7 @@ void Exit(int status) {
       }
    } else {
       deallocate_process_table(ptable);
+      ptable = NULL;
       free(ps1);
       free(ps2);
       ps1 = NULL;
@@ -747,8 +769,12 @@ void Exit(int status) {
 /*----------------------------------------------------------------------------*/
 
 void print_wait_status(pid_t pid, int status) {
-   printf("process %d, completed %snormally, status %d\n", pid,
-          ((status >= 0) ? "" : "ab"), status);
+   if(WIFEXITED(status)) {
+      printf("process %d, completed normally, status %d\n", pid,
+             WEXITSTATUS(status));
+   } else {
+      printf("process %d, completed abnormally, status %d\n", pid, status);
+   }
 }
 
 /*----------------------------------------------------------------------------*/
