@@ -561,9 +561,10 @@ int builtin(char *argv[]) {
    } else if(strcmp(argv[0], "set") == 0) {
       // If no arguments, print all env's
       if(argv[1] == NULL) {
-        while(*environ != NULL) {
-           printf("%s\n", *environ);
-           environ++;
+         char **env = environ;
+         while(*env != NULL) {
+            printf("%s\n", *env);
+            env++;
         }
         return 0;
       }
