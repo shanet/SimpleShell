@@ -690,8 +690,12 @@ void Exit(int status) {
 /*----------------------------------------------------------------------------*/
 
 void print_wait_status(pid_t pid, int status) {
-   printf("process %d, completed %snormally, status %d\n", pid,
-          ((status >= 0) ? "" : "ab"), status);
+   if(WIFEXITED(status)) {
+      printf("process %d, completed normally, status %d\n", pid,
+             WEXITSTATUS(status));
+   } else {
+      printf("process %d, completed abnormally, status %d\n", pid, status);
+   }
 }
 
 /*----------------------------------------------------------------------------*/
