@@ -24,6 +24,10 @@
 #define MAX_ARGS 128
 #define STARTUP_FILE "pr7.init"
 
+#define EXEC_LP 0
+#define EXEC_VP 1
+#define EXEC_VE 2
+
 // MAX_LINE            input line length
 // MAX_PATH            directory name length
 // MAX_CHILDREN        number of child processes
@@ -47,6 +51,8 @@ char *ps1;
 char *ps2;
 int self_pid;
 int verbose;
+int debug;
+int exec;
 int echo;
 process_table_t *ptable;
 static pid_t foreground_pid = 0;

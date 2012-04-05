@@ -21,7 +21,9 @@ int main(int argc, char *argv[]) {
    extern int opterr;
 
    verbose = 0;
+   debug = 0;
    echo = 0;
+   exec = EXEC_VP;
    int interactive = 0;
    int custom_startup = 0;
    char *startup_file = STARTUP_FILE;
@@ -58,13 +60,17 @@ int main(int argc, char *argv[]) {
       }
    }
 
+   // If no arguments, check if stdin is connected to a terminal and turn interactive mode on
+   // http://goo.gl/exIzI
+   if(argc == 1 && isatty(fileno(stdin))) interactive = 1;
+
    // Set up the process table
    if ((ptable = allocate_process_table()) == NULL) {
       fprintf(stderr, "%s: Could not allocate the process table.", prog);
    }
 
    // Prevent SIGINT's from terminating the shell
-   //install_signal_handler(SIGINT, SIGINT_handler);
+   install_signal_handler(SIGINT, SIGINT_handler);
 
    if(verbose) {
       printf("%s %d: hello, world\n", prog, self_pid);
@@ -250,6 +256,10 @@ int eval_line(char *cmdline) {
          buf[cmdline_len] = '\0';
       }
 
+      if(debug) {
+         fprintf(stderr, "%s: cmdline: %s\n", prog, cmdline);
+      }
+
       // Build argv array
       background = parse(buf, argv);
 
@@ -260,7 +270,7 @@ int eval_line(char *cmdline) {
 
       // If echo is on, print out the command
       if(echo) {
-         printf("%s", buf);
+         printf("%s\n", buf);
       }
 
       // Check for builtin commands (exit, echo, etc.)
@@ -274,6 +284,17 @@ int eval_line(char *cmdline) {
          ignore_signal_handler(SIGINT);
 
          // Try to replace the child with the desired program
+         switch(exec) {
+            case EXEC_LP:
+               execlp(argv[0], argv[0]);
+               break;
+            case EXEC_VP:
+               execvp(argv[0], argv);
+               break;
+            case EXEC_VE:
+               execve(argv[0], argv, environ);
+            default:;
+         }
          execvp(argv[0], argv);
          printf("%s: failed: %s\n", buf, strerror(errno));
          _exit(EXIT_FAILURE);
@@ -286,7 +307,7 @@ int eval_line(char *cmdline) {
       } else {
          foreground_pid = pid;
          if(waitpid(pid, &status, 0) == -1) {
-            printf("%s: failed: %s\n", buf, strerror(errno));
+            printf("%s: wait failed: %s\n", buf, strerror(errno));
             exit(EXIT_FAILURE);
          }
          foreground_pid = 0;
@@ -506,15 +527,15 @@ int builtin(char *argv[]) {
       return 0;
 
    // pjobs command
-   } else if (strcmp(argv[0], "pjobs") == 0) {
+   } else if(strcmp(argv[0], "pjobs") == 0) {
       // Print the process table of running jobs
-      if (print_process_table(ptable) != 0) {
+      if(print_process_table(ptable) != 0) {
          fprintf(stderr, "%s: Failed to print process table\n", prog);
       }
       return 0;
 
    // limits command
-   } else if (strcmp(argv[0], "limits") == 0) {
+   } else if(strcmp(argv[0], "limits") == 0) {
       // Print the constants used on input limits, # of child processes, etc
       printf("%s: Limits of the shell:\n", prog);
       printf("\tMax command length:\t%d chars\n", MAX_COMMAND);
@@ -524,7 +545,55 @@ int builtin(char *argv[]) {
       printf("\tMax child processes:\t%d processes\n", MAX_CHILDREN);
 
       return 0;
+   // set command
+   } else if(strcmp(argv[0], "set") == 0) {
+      // If no arguments, print all env's
+      if(argv[1] == NULL) {
+        while(*environ != NULL) {
+           printf("%s\n", *environ);
+           environ++;
+        }
+        return 0;
+      }
+      // All other commands require a second argument.
+      // Make sure we have one
+      if(argv[2] == NULL) {
+         fprintf(stderr, "%s: Missing argument\n", prog);
+      }
 
+      if(strcmp(argv[1], "verbose") == 0) {
+         if(strcmp(argv[2], "on") == 0) {
+            verbose = 1;
+         } else if(strcmp(argv[2], "off") == 0) {
+            verbose = 0;
+         } else {
+            fprintf(stderr, "%s: Invalid argument: \"%s\"\n", prog, argv[2]);
+         }
+         return 0;
+      } else if(strcmp(argv[1], "debug") == 0) {
+         if(strcmp(argv[2], "on") == 0) {
+            debug = 1;
+            // Why not? Turn on echo as well
+            echo = 1;
+         } else if(strcmp(argv[2], "off") == 0) {
+            debug = 0;
+            echo = 0;
+         } else {
+            fprintf(stderr, "%s: Invalid argument: \"%s\"\n", prog, argv[2]);
+         }
+         return 0;
+      } else if(strcmp(argv[1], "exec") == 0) {
+         if(strcmp(argv[2], "lp")) {
+            exec = EXEC_LP;
+         } else if(strcmp(argv[2], "vp")) {
+            exec = EXEC_VP;
+         } else if(strcmp(argv[2], "ve")) {
+            exec = EXEC_VE;
+         } else {
+            fprintf(stderr, "%s: Invalid argument: \"%s\"\n", prog, argv[2]);
+         }
+         return 0;
+      }
    // help command
    } else if(strcmp(argv[0], "help") == 0) {
       printf("%s: Built-in commands:\n", prog);
@@ -537,6 +606,10 @@ int builtin(char *argv[]) {
       printf("\tpjobs\t\t\tPrint table of all running jobs\n");
       printf("\tlimits\t\t\tPrint various limits of the shell\n");
       printf("\thelp\t\t\tPrint this message\n");
+      printf("\tset\t\t\tPrint all enviroment variables\n");
+      printf("\tset debug [on|off]\tEnable/disable debug output\n");
+      printf("\tset exec [lp|vp|ve]\tSet the exec() function to use\n");
+      printf("\tset verbose [on|off]\tEnable/disable verbose output\n");
       printf("\texit [n]\t\tExit the shell with specified exit code (0 if omitted)\n");
       printf("\tquit [n]\t\tSame as \'exit\'\n");
       return 0;
