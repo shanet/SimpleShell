@@ -108,6 +108,12 @@ int main(int argc, char *argv[]) {
    if(argv[optind] == NULL || strcmp(argv[optind], "-") == 0) {
       infile = stdin;
       infile_name = "[stdin]";
+      
+      // If stdin represents input from the terminal (as opposed to from a
+      // pipe), make the shell interactive.
+      if(isatty(STDIN_FILENO)) {
+         interactive = 1;
+      }
    } else {
       infile_name = argv[optind];  
       infile = fopen(infile_name, "r");
