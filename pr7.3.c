@@ -60,10 +60,6 @@ int main(int argc, char *argv[]) {
       }
    }
 
-   // If no arguments, check if stdin is connected to a terminal and turn interactive mode on
-   // http://goo.gl/exIzI
-   if(argc == 1 && isatty(fileno(stdin))) interactive = 1;
-
    // Set up the process table
    if ((ptable = allocate_process_table()) == NULL) {
       fprintf(stderr, "%s: Could not allocate the process table.", prog);
@@ -117,9 +113,7 @@ int main(int argc, char *argv[]) {
       
       // If stdin represents input from the terminal (as opposed to from a
       // pipe), make the shell interactive.
-      if(isatty(STDIN_FILENO)) {
-         interactive = 1;
-      }
+      if(isatty(fileno(stdin))) interactive = 1;
    } else {
       infile_name = argv[optind];  
       infile = fopen(infile_name, "r");
