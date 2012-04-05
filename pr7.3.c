@@ -135,8 +135,9 @@ int main(int argc, char *argv[]) {
    char *tmp_cmdline;
    int isLineCont = 0;
    while(1) {
-      // If interctive mode, show a prompt and get input from readline
-      if(interactive) {         
+      // If in interactive mode via stdin, show a prompt and get input from
+      // readline
+      if(interactive && infile == stdin) {         
          // Clear previous input from cmdline
          memset(cmdline, '\0', strlen(cmdline));
 
@@ -160,7 +161,7 @@ int main(int argc, char *argv[]) {
 
          // Add the input into the history
          add_history(tmp_cmdline);
-      // If not interactive mode, just use fgets to get input
+      // If not interactive mode or reading from a file, use fgets to get input
       } else if(fgets(cmdline, MAX_LINE, infile) == NULL) {
          // Check if EOF was hit
          if (feof(infile)) {
