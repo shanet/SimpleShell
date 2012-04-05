@@ -571,6 +571,7 @@ int builtin(char *argv[]) {
       // Make sure we have one
       if(argv[2] == NULL) {
          fprintf(stderr, "%s: Missing argument\n", prog);
+         return 0;
       }
 
       if(strcmp(argv[1], "verbose") == 0) {
@@ -595,11 +596,11 @@ int builtin(char *argv[]) {
          }
          return 0;
       } else if(strcmp(argv[1], "exec") == 0) {
-         if(strcmp(argv[2], "lp")) {
+         if(strcmp(argv[2], "lp") == 0) {
             exec = EXEC_LP;
-         } else if(strcmp(argv[2], "vp")) {
+         } else if(strcmp(argv[2], "vp") == 0) {
             exec = EXEC_VP;
-         } else if(strcmp(argv[2], "ve")) {
+         } else if(strcmp(argv[2], "ve") == 0) {
             exec = EXEC_VE;
          } else {
             fprintf(stderr, "%s: Invalid argument: \"%s\"\n", prog, argv[2]);
