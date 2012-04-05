@@ -47,6 +47,10 @@
 
 #endif
 
+// eru.cse.psu.edu's signal.h does not define sighandler_t;
+// define it here to be safe
+typedef void (*sighandler_t) (int);
+
 char *prog;
 char *ps1;
 char *ps2;
