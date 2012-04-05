@@ -501,7 +501,6 @@ int builtin(char *argv[]) {
    // penv command
    } else if(strcmp(argv[0], "penv") == 0) {
       char *env;
-      extern char **environ;
       // If there aren't any arguments, print all envs
       if(argv[1] == NULL) {
          unsigned int i=0;
