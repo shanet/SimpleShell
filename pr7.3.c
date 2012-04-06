@@ -585,11 +585,13 @@ int builtin(char *argv[]) {
       } else if(strcmp(argv[1], "debug") == 0) {
          if(strcmp(argv[2], "on") == 0) {
             debug = 1;
-            // Why not? Turn on echo as well
+            // Why not? Turn on echo and verbose as well
             echo = 1;
+            verbose = 1;
          } else if(strcmp(argv[2], "off") == 0) {
             debug = 0;
             echo = 0;
+            verbose = 0;
          } else {
             fprintf(stderr, "%s: Invalid argument: \"%s\"\n", prog, argv[2]);
          }
