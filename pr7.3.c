@@ -135,8 +135,9 @@ int main(int argc, char *argv[]) {
    char *tmp_cmdline;
    int isLineCont = 0;
    while(1) {
-      // If interctive mode, show a prompt and get input from readline
-      if(interactive) {         
+      // If in interactive mode via stdin, show a prompt and get input from
+      // readline
+      if(interactive && infile == stdin) {         
          // Clear previous input from cmdline
          memset(cmdline, '\0', strlen(cmdline));
 
@@ -160,7 +161,7 @@ int main(int argc, char *argv[]) {
 
          // Add the input into the history
          add_history(tmp_cmdline);
-      // If not interactive mode, just use fgets to get input
+      // If not interactive mode or reading from a file, use fgets to get input
       } else if(fgets(cmdline, MAX_LINE, infile) == NULL) {
          // Check if EOF was hit
          if (feof(infile)) {
@@ -500,7 +501,6 @@ int builtin(char *argv[]) {
    // penv command
    } else if(strcmp(argv[0], "penv") == 0) {
       char *env;
-      extern char **environ;
       // If there aren't any arguments, print all envs
       if(argv[1] == NULL) {
          unsigned int i=0;
@@ -561,9 +561,10 @@ int builtin(char *argv[]) {
    } else if(strcmp(argv[0], "set") == 0) {
       // If no arguments, print all env's
       if(argv[1] == NULL) {
-        while(*environ != NULL) {
-           printf("%s\n", *environ);
-           environ++;
+         char **env = environ;
+         while(*env != NULL) {
+            printf("%s\n", *env);
+            env++;
         }
         return 0;
       }
@@ -571,6 +572,7 @@ int builtin(char *argv[]) {
       // Make sure we have one
       if(argv[2] == NULL) {
          fprintf(stderr, "%s: Missing argument\n", prog);
+         return 0;
       }
 
       if(strcmp(argv[1], "verbose") == 0) {
@@ -597,11 +599,11 @@ int builtin(char *argv[]) {
          }
          return 0;
       } else if(strcmp(argv[1], "exec") == 0) {
-         if(strcmp(argv[2], "lp")) {
+         if(strcmp(argv[2], "lp") == 0) {
             exec = EXEC_LP;
-         } else if(strcmp(argv[2], "vp")) {
+         } else if(strcmp(argv[2], "vp") == 0) {
             exec = EXEC_VP;
-         } else if(strcmp(argv[2], "ve")) {
+         } else if(strcmp(argv[2], "ve") == 0) {
             exec = EXEC_VE;
          } else {
             fprintf(stderr, "%s: Invalid argument: \"%s\"\n", prog, argv[2]);

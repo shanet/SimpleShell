@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -46,6 +47,10 @@
 
 #endif
 
+// eru.cse.psu.edu's signal.h does not define sighandler_t;
+// define it here to be safe
+typedef void (*sighandler_t) (int);
+
 char *prog;
 char *ps1;
 char *ps2;
@@ -56,6 +61,7 @@ int exec;
 int echo;
 process_table_t *ptable;
 static pid_t foreground_pid = 0;
+extern char **environ;
 
 void usage(int status);                         /* print usage information */
 int eval_line(char *cmdline);                   /* evaluate a command line */
