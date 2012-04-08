@@ -301,6 +301,10 @@ int eval_line(char *cmdline) {
 
          // Try to replace the child with the desired program
          switch(exec) {
+            // Hey! We can't convert from a array of unknown length at compile-time to 
+            // a variable argument list so only send the 1st argument. This essentially
+            // renders using execlp useless so it's more of a proof of concept than
+            // anything else.
             case EXEC_LP:
                execlp(argv[0], argv[0]);
                break;
