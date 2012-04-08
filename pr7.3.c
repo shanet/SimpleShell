@@ -232,7 +232,9 @@ int eval_line(char *cmdline) {
    pid_t pid;                            /* process id */
    int status = EXIT_SUCCESS;
    char *sc;                             /* index of semicolon in cmdline */
+   char *pipe;                           /* index of pipe char in cmdline */
    size_t sc_len;                        /* length of sc */
+   size_t pipe_len;                      /* length of pipe */
    size_t cmdline_len = strlen(cmdline); /* length of cmdline */
    char buf[cmdline_len+1];              /* modified command */
 
@@ -242,7 +244,7 @@ int eval_line(char *cmdline) {
    }
 
    // Check for semicolons denoting multiple commands in a single line of input
-   while((sc = strchr(cmdline, ';')) != NULL || single) {
+   while((sc = strchr(cmdline, ';')) != NULL || (pipe = strchr(cmdline, '|')) != NULL || single) {
       // Only allow single to cause one loop iteration
       single = 0;
 
@@ -295,6 +297,9 @@ int eval_line(char *cmdline) {
       if((pid = fork()) == 0) {
          // Ignore SIGINT in the child -- our shell manages interrupts to children
          ignore_signal_handler(SIGINT);
+
+         // Do any IO redirection if requested
+         redirect(argv);
 
          // Try to replace the child with the desired program
          switch(exec) {
@@ -641,6 +646,121 @@ int builtin(char *argv[]) {
 
 /*----------------------------------------------------------------------------*/
 
+void redirect(char *argv[]) {
+   // Redirect limitations:
+   //    - All command arguments must come before redirection characters
+   //    - "<<" is not supported
+   //    - There must be a space before and after each redirection character
+
+   FILE *new_stdin = NULL;
+   FILE *new_stdout = NULL;
+   int index = -1;
+
+   for(unsigned int i=1; argv[i] != NULL; i++) {
+      if(strcmp(argv[i], "<") == 0 && argv[i+1] != NULL) {
+         if(debug) {
+            fprintf(stderr, "%s: Redirecting stdin to: \"%s\"\n", prog, argv[i+1]);
+         }
+
+         if((new_stdin = fopen(argv[i+1], "r")) == NULL) {
+            fprintf(stderr, "%s: Failed to open input redirection file: \"%s\"\n", prog, argv[i+1]);
+         }
+         
+         if(fclose(stdin) == EOF) {
+            fprintf(stderr, "%s: Failed to close standard input stream for redirection\n", prog);
+         }
+
+         if(dup(fileno(new_stdin)) == -1) {
+            fprintf(stderr, "%s: Failed to redirect standard input: %s\n", prog, strerror(errno));
+         } else {
+            // Update stdout to the new stdout FD
+            stdin = new_stdin;
+         }
+
+         if(index == -1) index = i;
+      // Check if new_stdout is NULL to diallow both overwrite and append redirection
+      } else if(strcmp(argv[i], ">") == 0 && argv[i+1] != NULL && new_stdout == NULL) {
+         if(debug) {
+            fprintf(stderr, "%s: Redirecting stdout (overwrite) to: \"%s\"\n", prog, argv[i+1]);
+         }
+
+         if((new_stdout = fopen(argv[i+1], "w")) == NULL) {
+            fprintf(stderr, "%s: Failed to open output redirection file: \"%s\"\n", prog, argv[i+1]);
+         }
+
+         if(fclose(stdout) == EOF) {
+            fprintf(stderr, "%s: Failed to close standard output stream for redirection\n", prog);
+         }
+
+         if(dup(fileno(new_stdout)) == -1) {
+            fprintf(stderr, "%s: Failed to redirect standard input: %s\n", prog, strerror(errno));
+         } else {
+            // Update stdout to the new stdout FD
+            stdout = new_stdout;
+         }
+
+         if(index == -1) index = i;
+      // Check if new_stdout is NULL to diallow both overwrite and append redirection
+      } else if(strcmp(argv[i], ">>") == 0 && argv[i+1] != NULL && new_stdout == NULL) {
+         if(debug) {
+            fprintf(stderr, "%s: Redirecting stdout (append) to: \"%s\"\n", prog, argv[i+1]);
+         }
+
+         if((new_stdout = fopen(argv[i+1], "a")) == NULL) {
+            fprintf(stderr, "%s: Failed to open output redirection file: \"%s\"\n", prog, argv[i+1]);
+         }
+         
+         if(fclose(stdout) == EOF) {
+            fprintf(stderr, "%s: Failed to close standard output stream for redirection\n", prog);
+         }
+         
+         if(dup(fileno(new_stdout)) == -1) {
+            fprintf(stderr, "%s: Failed to redirect standard input: %s\n", prog, strerror(errno));
+         } else {
+            // Update stdout to the new stdout FD
+            stdout = new_stdout;
+         }
+
+         if(index == -1) index = i;
+      } else if(strlen(argv[i]) == 4 && argv[i][1] == '>' && argv[i][2] == '&') {
+         // Check if redirecting stderr to stdout
+         if(argv[i][0] == '2' && argv[i][3] == '1') {
+            if(debug) {
+               fprintf(stderr, "%s: Redirecting stderr to stdout\n", prog);
+            }
+
+            if(dup2(fileno(stdout), fileno(stderr)) == -1) {
+               fprintf(stderr, "%s: Failed to redirect standard error to standard output: %s\n", prog, strerror(errno));
+            }
+
+            if(index == -1) index = i;
+         // Check if redirecting stdout to stderr
+         } else if(argv[i][0] == '1' && argv[i][3] == '2') {
+            if(debug) {
+               fprintf(stderr, "%s: Redirecting stdout to stderr\n", prog);
+            }
+
+            if(fclose(stdout) == EOF) {
+               fprintf(stderr, "%s: Failed to close standard output stream for redirection\n", prog);
+            }
+
+            if(dup2(fileno(stdout), fileno(stderr)) == -1) {
+               fprintf(stderr, "%s: Failed to redirect standard output to standard error: %s\n", prog, strerror(errno));
+            }
+
+            if(index == -1) index = i;
+         }
+      }
+   }
+
+   // Cutoff the argv array at the first IO redirection index
+   if(index != -1) {
+      argv[index] = NULL;
+   }
+}
+
+/*----------------------------------------------------------------------------*/
+
 char* get_prompt(int isLineCont) {
    char user[MAX_LINE];
    char host[MAX_LINE];
@@ -687,8 +807,10 @@ void SIGINT_handler(int sig) {
    }
 
    if(foreground_pid == 0) {
-      fprintf(stderr, "SIGINT ignored\n");
-      printf("%s", ps1);
+      if(verbose || debug) {
+         fprintf(stderr, "SIGINT ignored");
+      }
+      printf("\n%s", ps1);
    } else {
       kill(foreground_pid, SIGINT);
       foreground_pid = 0;

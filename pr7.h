@@ -67,6 +67,7 @@ void usage(int status);                         /* print usage information */
 int eval_line(char *cmdline);                   /* evaluate a command line */
 int parse(char *buf, char *argv[]);             /* build the argv array */
 int builtin(char *argv[]);                      /* if builtin command, run it */
+void redirect(char *argv[]);
 char* get_prompt(int isLineCont);
 void update_prompt(int isLineCont);
 void Exit(int status);
