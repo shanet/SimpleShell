@@ -232,9 +232,7 @@ int eval_line(char *cmdline) {
    pid_t pid;                            /* process id */
    int status = EXIT_SUCCESS;
    char *sc;                             /* index of semicolon in cmdline */
-   char *pipe;                           /* index of pipe char in cmdline */
    size_t sc_len;                        /* length of sc */
-   size_t pipe_len;                      /* length of pipe */
    size_t cmdline_len = strlen(cmdline); /* length of cmdline */
    char buf[cmdline_len+1];              /* modified command */
 
@@ -244,7 +242,7 @@ int eval_line(char *cmdline) {
    }
 
    // Check for semicolons denoting multiple commands in a single line of input
-   while((sc = strchr(cmdline, ';')) != NULL || (pipe = strchr(cmdline, '|')) != NULL || single) {
+   while((sc = strchr(cmdline, ';')) != NULL || single) {
       // Only allow single to cause one loop iteration
       single = 0;
 
