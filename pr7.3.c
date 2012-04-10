@@ -322,7 +322,9 @@ int eval_line(char *cmdline) {
 
       // Parent waits for foreground job to terminate
       if(background) {
-         printf("background process %d: %s\n", (int) pid, buf);
+         if(verbose) {
+            printf("background process %d: %s\n", (int) pid, buf);
+         }
          insert_new_process(ptable, pid, buf);
       } else {
          foreground_pid = pid;
