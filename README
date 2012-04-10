@@ -14,7 +14,7 @@ Extra credit items:
 
 - Runtime changing of verbose, debug, and exec:
    - The built in 'set' command allows for the changing of verbose, debug, and exec() type at runtime.
-   - Arguments other than the program name are not passed when using execle() due to it taking a variable argument list rather than an array as its arguments. There is an unknown number of arguments at compile time, thus it is not possible to know how many variable arguments to pass to execle() at runtime so we decided to only pass the first argument which is mandatory.
+   - Arguments other than the program name are not passed when using execlp() due to it taking a variable argument list rather than an array as its arguments. There is an unknown number of arguments at compile time, thus it is not possible to know how many variable arguments to pass to execle() at runtime so we decided to only pass the first argument which is mandatory.
 
 - Explicit environment variables passing:
    - If execve() is selected by use of the 'set' command described above, the enviroment variables are directly passed to the executed command.
