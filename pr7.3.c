@@ -357,6 +357,9 @@ int parse(char *buf, char *argv[]) {
    // Treat anything following a '#' as a comment
    char *cmtIndex = strchr(buf, '#');
    if(cmtIndex != NULL) {
+      if(debug) {
+         fprintf(stderr, "%s: Ignoring comment: %s\n", prog, cmtIndex);
+      }
       // Get a pointer to the end of the string
       char *end = strchr(cmtIndex, '\0');
       while(cmtIndex != end) end--;
