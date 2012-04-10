@@ -52,6 +52,7 @@ Extra credit items:
 
 - Quoted command-line arguments:
    - Arguments wrapped in double quotations are treated as a single argument.
+   - Quoted arguments that include a semicolon are broken into two separate commands at the semicolon.
 
 - Interactive mode detection:
    - By default, the shell starts in a non-interactive mode (it does not print a prompt). If the shell detects that stdin is connected to a terminal window (tty) then it will turn on interactive mode.
