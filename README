@@ -32,6 +32,7 @@ Extra credit items:
    - stdin redirection with '<<' is not supported.
    - There must be at least one character of whitespace before and after any redirection character.
    - Non-redirection arguments after redirection arguments will be ignored.
+   - Built in commands such as 'echo' do not respond to IO redirection.
 
 - Error redirection:
    - stderr to stdout redirection can be acheived with '2>&1'
