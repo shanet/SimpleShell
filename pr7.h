@@ -29,6 +29,12 @@
 #define EXEC_VP 1
 #define EXEC_VE 2
 
+// Types of redirection
+#define R_NONE      0
+#define R_STDIN     1
+#define R_STDOUT    2
+#define R_BOTH      3
+
 // MAX_LINE            input line length
 // MAX_PATH            directory name length
 // MAX_CHILDREN        number of child processes
@@ -67,7 +73,7 @@ void usage(int status);                         /* print usage information */
 int eval_line(char *cmdline);                   /* evaluate a command line */
 int parse(char *buf, char *argv[]);             /* build the argv array */
 int builtin(char *argv[]);                      /* if builtin command, run it */
-void redirect(char *argv[]);
+int redirect(char *argv[]);
 char* get_prompt(int isLineCont);
 void update_prompt(int isLineCont);
 void Exit(int status);

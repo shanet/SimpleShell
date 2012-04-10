@@ -452,8 +452,10 @@ int builtin(char *argv[]) {
          printf("%s ", argv[i]);
          i++;
       }
+
       // Print a trailing a newline
       printf("\n");
+
       return 0;
 
    // dir command
@@ -653,7 +655,7 @@ int builtin(char *argv[]) {
 
 /*----------------------------------------------------------------------------*/
 
-void redirect(char *argv[]) {
+int redirect(char *argv[]) {
    // Redirect limitations:
    //    - All command arguments must come before redirection characters
    //    - "<<" is not supported
@@ -662,6 +664,7 @@ void redirect(char *argv[]) {
    FILE *new_stdin = NULL;
    FILE *new_stdout = NULL;
    int index = -1;
+   int type = R_NONE;
 
    for(unsigned int i=1; argv[i] != NULL; i++) {
       if(strcmp(argv[i], "<") == 0 && argv[i+1] != NULL) {
@@ -685,6 +688,8 @@ void redirect(char *argv[]) {
          }
 
          if(index == -1) index = i;
+
+         type = (type == R_STDOUT) ? R_BOTH : R_STDIN;
       // Check if new_stdout is NULL to diallow both overwrite and append redirection
       } else if(strcmp(argv[i], ">") == 0 && argv[i+1] != NULL && new_stdout == NULL) {
          if(debug) {
@@ -707,6 +712,8 @@ void redirect(char *argv[]) {
          }
 
          if(index == -1) index = i;
+
+         type = (type == R_STDIN) ? R_BOTH : R_STDOUT;
       // Check if new_stdout is NULL to diallow both overwrite and append redirection
       } else if(strcmp(argv[i], ">>") == 0 && argv[i+1] != NULL && new_stdout == NULL) {
          if(debug) {
@@ -729,6 +736,8 @@ void redirect(char *argv[]) {
          }
 
          if(index == -1) index = i;
+
+         type = (type == R_STDIN) ? R_BOTH : R_STDOUT;
       } else if(strlen(argv[i]) == 4 && argv[i][1] == '>' && argv[i][2] == '&') {
          // Check if redirecting stderr to stdout
          if(argv[i][0] == '2' && argv[i][3] == '1') {
@@ -764,6 +773,8 @@ void redirect(char *argv[]) {
    if(index != -1) {
       argv[index] = NULL;
    }
+
+   return type;
 }
 
 /*----------------------------------------------------------------------------*/
