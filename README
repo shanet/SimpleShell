@@ -37,7 +37,7 @@ Extra credit items:
 - Error redirection:
    - stderr to stdout redirection can be acheived with '2>&1'
    - stdout to stderr redirection can be achieved with '1>&2'
-   - If using IO redirection as documented above, error redirection must come before IO redirection.
+   - If using IO redirection as documented above in conjunction with error redirection, error redirection must come after IO redirection.
 
 - Multiple commands with ';':
    - Multiple commands can be entered on a single line if seperated with a semicolon.
