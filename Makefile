@@ -1,12 +1,10 @@
-# CMPSC 311 Project 7, Makefile
+# SimpleShell
 #
-# Authors:              Shane Tully and Gage Ames
-# Emails:               spt5063@psu.edu and gra5028@psu.edu
-#
+# Authors: Shane Tully and Gage Ames
 
-SRC=pr7.3.c pr7_table.c
+SRC=ss.c ss_table.c
 
-BINARY=pr7
+BINARY=simpleshell
 CFLAGS=-std=c99 -Wall -Wextra
 MACROS=-D_GNU_SOURCE
 LIBS=-lreadline
