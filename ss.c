@@ -1,10 +1,9 @@
-/* CMPSC 311 Project 7, version 3
+/* SimpleShell, version 3
  *
  * Authors:    Shane Tully and Gage Ames
- * Emails:     spt5063@psu.edu and gra5028@psu.edu
  */
 
-#include "pr7.h"
+#include "ss.h"
 
 int main(int argc, char *argv[]) {
    char cmdline[MAX_LINE];

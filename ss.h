@@ -1,10 +1,9 @@
-#ifndef PR7_H
-#define PR7_H
+#ifndef SS_H
+#define SS_H
 
-/* CMPSC 311 Project 7
+/* SimpleShell
  *
  * Authors:    Shane Tully and Gage Ames
- * Emails:     spt5063@psu.edu and gra5028@psu.edu
  *
  */
 
@@ -19,7 +18,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "pr7_table.h"
+#include "ss_table.h"
 
 #define MAX_COMMAND 4096
 #define MAX_ARGS 128

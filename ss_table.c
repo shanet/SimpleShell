@@ -1,12 +1,11 @@
-/* CMPSC 311 Project 7, Process Table
+/* SimpleShell, Process Table
  *
  * Authors:    Shane Tully and Gage Ames
- * Emails:     spt5063@psu.edu and gra5028@psu.edu
  *
  * Interface information for a process table
  */
 
-#include "pr7_table.h"
+#include "ss_table.h"
 char *state[] = { "none", "running", "terminated" };
 
 // typedef struct child_process {

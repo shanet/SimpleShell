@@ -1,10 +1,9 @@
-#ifndef PR7_TABLE_H
-#define PR7_TABLE_H
+#ifndef SS_TABLE_H
+#define SS_TABLE_H
 
-/* CMPSC 311 Project 7, Process Table
+/* SimpleShell, Process Table
  *
  * Authors:    Shane Tully and Gage Ames
- * Emails:     spt5063@psu.edu and gra5028@psu.edu
  *
  * Interface information for a process table
  */
