@@ -1,6 +1,7 @@
-SimpleShell
+# SimpleShell
 
-Authors:    Shane Tully and Gage Ames
+### Shane Tully and Gage Ames
+### shanetully.com & gageames.com
 
 SimpleShell is a very simple proof of concept shell. It was modeled after Bash and supports many of the same, basic features. Apart from the overall purpose of running commands, some of the features of the shell are below.
 
